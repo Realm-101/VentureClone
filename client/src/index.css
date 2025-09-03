@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(26, 4%, 10%);
+  --foreground: hsl(0, 0%, 100%);
+  --card: hsl(26, 5%, 18%);
+  --card-foreground: hsl(0, 0%, 100%);
+  --popover: hsl(26, 4%, 10%);
+  --popover-foreground: hsl(0, 0%, 100%);
+  --primary: hsl(16, 100%, 50%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(348, 83%, 47%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(26, 5%, 18%);
+  --muted-foreground: hsl(0, 0%, 69%);
+  --accent: hsl(51, 100%, 50%);
+  --accent-foreground: hsl(26, 4%, 10%);
+  --destructive: hsl(0, 85%, 60%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(0, 0%, 25%);
+  --input: hsl(26, 5%, 18%);
+  --ring: hsl(16, 100%, 50%);
+  --chart-1: hsl(16, 100%, 50%);
+  --chart-2: hsl(348, 83%, 47%);
+  --chart-3: hsl(51, 100%, 50%);
+  --chart-4: hsl(120, 60%, 50%);
+  --chart-5: hsl(280, 60%, 50%);
+  --sidebar: hsl(26, 5%, 18%);
+  --sidebar-foreground: hsl(0, 0%, 100%);
+  --sidebar-primary: hsl(16, 100%, 50%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(51, 100%, 50%);
+  --sidebar-accent-foreground: hsl(26, 4%, 10%);
+  --sidebar-border: hsl(0, 0%, 25%);
+  --sidebar-ring: hsl(16, 100%, 50%);
+  --font-sans: Inter, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Roboto Mono, monospace;
+  --radius: 0.75rem;
+  --vc-primary: hsl(16, 100%, 50%);
+  --vc-secondary: hsl(348, 83%, 47%);
+  --vc-accent: hsl(51, 100%, 50%);
+  --vc-dark: hsl(26, 4%, 10%);
+  --vc-card: hsl(26, 5%, 18%);
+  --vc-border: hsl(0, 0%, 25%);
+  --vc-text: hsl(0, 0%, 100%);
+  --vc-text-muted: hsl(0, 0%, 69%);
+}
+
+.dark {
+  --background: hsl(26, 4%, 10%);
+  --foreground: hsl(0, 0%, 100%);
+  --card: hsl(26, 5%, 18%);
+  --card-foreground: hsl(0, 0%, 100%);
+  --popover: hsl(26, 4%, 10%);
+  --popover-foreground: hsl(0, 0%, 100%);
+  --primary: hsl(16, 100%, 50%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(348, 83%, 47%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(26, 5%, 18%);
+  --muted-foreground: hsl(0, 0%, 69%);
+  --accent: hsl(51, 100%, 50%);
+  --accent-foreground: hsl(26, 4%, 10%);
+  --destructive: hsl(0, 85%, 60%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(0, 0%, 25%);
+  --input: hsl(26, 5%, 18%);
+  --ring: hsl(16, 100%, 50%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .shadow-neon {
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.3);
+  }
+  
+  .shadow-neon-gold {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+
+  .bg-vc-primary {
+    background-color: var(--vc-primary);
+  }
+
+  .bg-vc-secondary {
+    background-color: var(--vc-secondary);
+  }
+
+  .bg-vc-accent {
+    background-color: var(--vc-accent);
+  }
+
+  .bg-vc-dark {
+    background-color: var(--vc-dark);
+  }
+
+  .bg-vc-card {
+    background-color: var(--vc-card);
+  }
+
+  .text-vc-primary {
+    color: var(--vc-primary);
+  }
+
+  .text-vc-secondary {
+    color: var(--vc-secondary);
+  }
+
+  .text-vc-accent {
+    color: var(--vc-accent);
+  }
+
+  .text-vc-text {
+    color: var(--vc-text);
+  }
+
+  .text-vc-text-muted {
+    color: var(--vc-text-muted);
+  }
+
+  .border-vc-primary {
+    border-color: var(--vc-primary);
+  }
+
+  .border-vc-secondary {
+    border-color: var(--vc-secondary);
+  }
+
+  .border-vc-accent {
+    border-color: var(--vc-accent);
+  }
+
+  .border-vc-border {
+    border-color: var(--vc-border);
+  }
+
+  .hover\:bg-vc-primary\/80:hover {
+    background-color: hsl(16, 100%, 50%, 0.8);
+  }
+
+  .hover\:border-vc-primary:hover {
+    border-color: var(--vc-primary);
+  }
+
+  .hover\:border-vc-accent:hover {
+    border-color: var(--vc-accent);
+  }
+
+  .hover\:text-vc-text:hover {
+    color: var(--vc-text);
+  }
+
+  .hover\:text-vc-primary\/80:hover {
+    color: hsl(16, 100%, 50%, 0.8);
+  }
+
+  .focus\:border-vc-primary:focus {
+    border-color: var(--vc-primary);
+  }
+
+  .focus\:border-vc-accent:focus {
+    border-color: var(--vc-accent);
+  }
+
+  .focus\:ring-vc-primary\/20:focus {
+    --tw-ring-color: hsl(16, 100%, 50%, 0.2);
+  }
+
+  .focus\:ring-vc-accent\/20:focus {
+    --tw-ring-color: hsl(51, 100%, 50%, 0.2);
+  }
+
+  .bg-vc-primary\/10 {
+    background-color: hsl(16, 100%, 50%, 0.1);
+  }
+
+  .bg-vc-primary\/20 {
+    background-color: hsl(16, 100%, 50%, 0.2);
+  }
+
+  .border-vc-primary\/30 {
+    border-color: hsl(16, 100%, 50%, 0.3);
+  }
+
+  .border-vc-accent\/30 {
+    border-color: hsl(51, 100%, 50%, 0.3);
+  }
+
+  .border-vc-secondary\/30 {
+    border-color: hsl(348, 83%, 47%, 0.3);
+  }
+
+  .border-vc-border\/50 {
+    border-color: hsl(0, 0%, 25%, 0.5);
+  }
+}
