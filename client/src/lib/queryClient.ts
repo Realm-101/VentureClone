@@ -12,7 +12,11 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Get API base URL from environment variable or default to empty string for relative URLs
+  const API_BASE_URL = import.meta.env.VITE_API_BASE || '';
+  const fullUrl = `${API_BASE_URL}${url}`;
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +33,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // Get API base URL from environment variable or default to empty string for relative URLs
+    const API_BASE_URL = import.meta.env.VITE_API_BASE || '';
+    const fullUrl = `${API_BASE_URL}${queryKey.join("/") as string}`;
+    
+    const res = await fetch(fullUrl, {
       credentials: "include",
     });
 

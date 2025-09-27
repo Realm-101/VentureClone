@@ -131,3 +131,6 @@ export interface EmptyStateProps {
 
 // Export component types
 export * from './components';
+
+// Export minimal API types
+export * from './minimal-api';

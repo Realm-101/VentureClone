@@ -1,285 +1,189 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertAiProviderSchema, insertBusinessAnalysisSchema } from "@shared/schema";
-import { AIProviderService } from "./services/ai-providers";
-import { BusinessAnalyzerService } from "./services/business-analyzer";
+import { minimalStorage } from "./minimal-storage";
+
+// URL validation helper
+function isValidUrl(string: string): boolean {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Google Gemini API integration for business analysis
+async function analyzeUrlWithGemini(url: string): Promise<{ content: string; model: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY missing");
+  }
+
+  const prompt = `Analyze this business URL and provide a concise business teardown in 100-150 words covering:
+1. Value proposition
+2. Target audience  
+3. Monetization strategy
+
+URL: ${url}
+
+Provide a focused analysis that helps understand the business model and market opportunity.`;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 200,
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Analysis could not be completed.";
+  return { content, model: "gemini:gemini-1.5-flash" };
+}
+
+// OpenAI API integration as fallback
+async function analyzeUrlWithOpenAI(url: string): Promise<{ content: string; model: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY missing");
+  }
+
+  const prompt = `Analyze this business URL and provide a concise business teardown in 100-150 words covering:
+1. Value proposition
+2. Target audience  
+3. Monetization strategy
+
+URL: ${url}
+
+Provide a focused analysis that helps understand the business model and market opportunity.`;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content || "Analysis could not be completed.";
+  return { content, model: "openai:gpt-4o-mini" };
+}
+
+// Multi-provider analysis with Gemini as primary and OpenAI as fallback
+async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: string }> {
+  // Try Gemini first
+  try {
+    console.log("Attempting analysis with Gemini...");
+    return await analyzeUrlWithGemini(url);
+  } catch (geminiError) {
+    console.warn("Gemini analysis failed, falling back to OpenAI:", geminiError);
+    
+    // Fallback to OpenAI
+    try {
+      console.log("Attempting analysis with OpenAI...");
+      return await analyzeUrlWithOpenAI(url);
+    } catch (openaiError) {
+      console.error("Both Gemini and OpenAI failed:", { geminiError, openaiError });
+      throw new Error("Both AI providers failed. Please check your API keys and try again.");
+    }
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // AI Provider routes
-  app.get("/api/ai-providers", async (req, res) => {
-    try {
-      // For demo purposes, using a default user ID
-      const userId = "default-user";
-      const providers = await storage.getAiProviders(userId);
-      res.json(providers);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch AI providers" });
-    }
-  });
-
-  app.get("/api/ai-providers/active", async (req, res) => {
-    try {
-      const userId = "default-user";
-      const provider = await storage.getActiveAiProvider(userId);
-      res.json(provider);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch active AI provider" });
-    }
-  });
-
-  app.post("/api/ai-providers", async (req, res) => {
-    try {
-      const userId = "default-user";
-      const validatedData = insertAiProviderSchema.parse({ ...req.body, userId });
-      const provider = await storage.createAiProvider(validatedData);
-      res.json(provider);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid AI provider data" });
-    }
-  });
-
-  app.put("/api/ai-providers/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const provider = await storage.updateAiProvider(id, updates);
-      if (!provider) {
-        return res.status(404).json({ message: "AI provider not found" });
-      }
-      res.json(provider);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to update AI provider" });
-    }
-  });
-
-  app.delete("/api/ai-providers/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteAiProvider(id);
-      if (!success) {
-        return res.status(404).json({ message: "AI provider not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete AI provider" });
-    }
-  });
-
-  app.post("/api/ai-providers/test", async (req, res) => {
-    try {
-      const { provider, apiKey } = req.body;
-      const aiService = new AIProviderService(apiKey, provider);
-      const isConnected = await aiService.testConnection();
-      res.json({ connected: isConnected });
-    } catch (error) {
-      res.status(400).json({ connected: false, message: "Connection test failed" });
-    }
-  });
-
-  // Business Analysis routes
+  console.log("=== REGISTERING MINIMAL ROUTES ===");
+  
+  // GET /api/business-analyses - List user's analyses in reverse chronological order
   app.get("/api/business-analyses", async (req, res) => {
+    console.log("GET /api/business-analyses hit");
     try {
-      const userId = "default-user";
-      const analyses = await storage.getBusinessAnalyses(userId);
+      const analyses = await minimalStorage.listAnalyses(req.userId);
       res.json(analyses);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch business analyses" });
+      console.error("Failed to fetch analyses:", error);
+      res.status(500).json({ error: "Failed to fetch business analyses" });
     }
   });
 
-  app.get("/api/business-analyses/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const analysis = await storage.getBusinessAnalysis(id);
-      if (!analysis) {
-        return res.status(404).json({ message: "Business analysis not found" });
-      }
-      res.json(analysis);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch business analysis" });
-    }
-  });
-
+  // POST /api/business-analyses/analyze - Create new analysis via multi-provider AI integration
   app.post("/api/business-analyses/analyze", async (req, res) => {
+    console.log("=== NEW MINIMAL ROUTE HIT ===", req.body);
     try {
       const { url } = req.body;
-      const userId = "default-user";
 
+      // Validate URL is provided
       if (!url) {
-        return res.status(400).json({ message: "URL is required" });
+        console.log("URL missing");
+        return res.status(400).json({ error: "URL is required" });
       }
 
-      // Get active AI provider
-      const activeProvider = await storage.getActiveAiProvider(userId);
-      if (!activeProvider) {
-        return res.status(400).json({ message: "No active AI provider configured" });
+      // Validate URL format
+      if (!isValidUrl(url)) {
+        console.log("Invalid URL format:", url);
+        return res.status(400).json({ error: "Invalid URL format" });
       }
 
-      // Initialize AI service
-      const aiService = new AIProviderService(activeProvider.apiKey, activeProvider.provider as any);
-      const analyzer = new BusinessAnalyzerService(aiService);
+      // Check for at least one AI provider API key
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ error: "At least one AI provider API key (GEMINI_API_KEY or OPENAI_API_KEY) is required" });
+      }
 
-      // Perform analysis
-      const analysisResult = await analyzer.analyzeURL(url);
+      // Perform AI analysis with multi-provider support
+      let analysisResult: { content: string; model: string };
+      try {
+        analysisResult = await analyzeUrlWithAI(url);
+      } catch (error) {
+        console.error("AI analysis failed:", error);
+        if (error instanceof Error) {
+          return res.status(500).json({ error: error.message });
+        }
+        return res.status(500).json({ error: "Failed to analyze URL with AI providers" });
+      }
 
-      // Save analysis
-      const analysisData = insertBusinessAnalysisSchema.parse({
-        userId,
-        url: analysisResult.url,
-        businessModel: analysisResult.businessModel,
-        revenueStream: analysisResult.revenueStream,
-        targetMarket: analysisResult.targetMarket,
-        overallScore: analysisResult.overallScore,
-        scoreDetails: analysisResult.scoreDetails,
-        aiInsights: analysisResult.aiInsights,
-        currentStage: 1,
-        stageData: {}
+      // Save analysis to storage
+      const analysis = await minimalStorage.createAnalysis(req.userId, {
+        url,
+        summary: analysisResult.content,
+        model: analysisResult.model
       });
 
-      const savedAnalysis = await storage.createBusinessAnalysis(analysisData);
-      res.json(savedAnalysis);
-    } catch (error) {
-      console.error("Analysis error:", error);
-      res.status(500).json({ message: "Failed to analyze business URL" });
-    }
-  });
-
-  app.post("/api/business-analyses/search", async (req, res) => {
-    try {
-      const { query } = req.body;
-      const userId = "default-user";
-
-      if (!query) {
-        return res.status(400).json({ message: "Search query is required" });
-      }
-
-      // Get active AI provider
-      const activeProvider = await storage.getActiveAiProvider(userId);
-      if (!activeProvider) {
-        return res.status(400).json({ message: "No active AI provider configured" });
-      }
-
-      // Initialize AI service
-      const aiService = new AIProviderService(activeProvider.apiKey, activeProvider.provider as any);
-      const analyzer = new BusinessAnalyzerService(aiService);
-
-      // Perform search
-      const searchResults = await analyzer.searchBusinesses(query);
-      res.json(searchResults);
-    } catch (error) {
-      console.error("Search error:", error);
-      res.status(500).json({ message: "Failed to search businesses" });
-    }
-  });
-
-  app.put("/api/business-analyses/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const analysis = await storage.updateBusinessAnalysis(id, updates);
-      if (!analysis) {
-        return res.status(404).json({ message: "Business analysis not found" });
-      }
       res.json(analysis);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update business analysis" });
-    }
-  });
-
-  // Workflow Stage routes
-  app.get("/api/workflow-stages/:analysisId", async (req, res) => {
-    try {
-      const { analysisId } = req.params;
-      const stages = await storage.getWorkflowStages(analysisId);
-      res.json(stages);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch workflow stages" });
-    }
-  });
-
-  app.post("/api/workflow-stages/:analysisId/generate/:stageNumber", async (req, res) => {
-    try {
-      const { analysisId, stageNumber } = req.params;
-      const userId = "default-user";
-      const stage = parseInt(stageNumber);
-
-      // Get analysis data
-      const analysis = await storage.getBusinessAnalysis(analysisId);
-      if (!analysis) {
-        return res.status(404).json({ message: "Business analysis not found" });
-      }
-
-      // Get active AI provider
-      const activeProvider = await storage.getActiveAiProvider(userId);
-      if (!activeProvider) {
-        return res.status(400).json({ message: "No active AI provider configured" });
-      }
-
-      // Initialize AI service
-      const aiService = new AIProviderService(activeProvider.apiKey, activeProvider.provider as any);
-      const analyzer = new BusinessAnalyzerService(aiService);
-
-      // Get previous stage data if needed
-      const stages = await storage.getWorkflowStages(analysisId);
-      const previousStage = stages.find(s => s.stageNumber === stage - 1);
-
-      // Generate stage content
-      const stageContent = await analyzer.generateStageContent(
-        stage,
-        analysis,
-        previousStage?.data
-      );
-
-      // Save or update stage
-      let workflowStage = stages.find(s => s.stageNumber === stage);
-      if (workflowStage) {
-        workflowStage = await storage.updateWorkflowStage(workflowStage.id, {
-          data: stageContent,
-          status: 'completed'
-        });
-      } else {
-        const stageNames = [
-          '', 'Discovery & Selection', 'Lazy-Entrepreneur Filter', 'MVP Launch Planning',
-          'Demand Testing Strategy', 'Scaling & Growth', 'AI Automation Mapping'
-        ];
-        
-        workflowStage = await storage.createWorkflowStage({
-          analysisId,
-          stageNumber: stage,
-          stageName: stageNames[stage] || `Stage ${stage}`,
-          status: 'completed',
-          data: stageContent,
-          aiGeneratedContent: stageContent
-        });
-      }
-
-      // Update analysis current stage
-      await storage.updateBusinessAnalysis(analysisId, { currentStage: stage });
-
-      res.json(workflowStage);
-    } catch (error) {
-      console.error("Stage generation error:", error);
-      res.status(500).json({ message: "Failed to generate stage content" });
-    }
-  });
-
-  // Stats route
-  app.get("/api/stats", async (req, res) => {
-    try {
-      const userId = "default-user";
-      const analyses = await storage.getBusinessAnalyses(userId);
-      
-      const stats = {
-        totalAnalyses: analyses.length,
-        strongCandidates: analyses.filter(a => (a.overallScore || 0) >= 7).length,
-        inProgress: analyses.filter(a => (a.currentStage || 1) > 1 && (a.currentStage || 1) < 6).length,
-        aiQueries: analyses.length * 15 // Rough estimate
-      };
-
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stats" });
+      console.error("Analysis creation failed:", error);
+      res.status(500).json({ error: "Failed to create business analysis" });
     }
   });
 
