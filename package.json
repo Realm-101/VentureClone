@@ -9,13 +9,23 @@
     "build:server": "esbuild server/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/index.js --external:pg --external:lightningcss --external:@babel/preset-typescript",
     "build:client": "vite build --outDir dist/public",
     "dev": "NODE_ENV=development tsx server/index.ts",
+    "dev:minimal": "STORAGE=mem VITE_ENABLE_EXTRAS=0 NODE_ENV=development tsx server/index.ts",
+    "dev:full": "STORAGE=mem VITE_ENABLE_EXTRAS=1 NODE_ENV=development tsx server/index.ts",
     "start": "NODE_ENV=production node dist/index.js",
+    "start:minimal": "STORAGE=mem VITE_ENABLE_EXTRAS=0 NODE_ENV=production node dist/index.js",
+    "build:minimal": "VITE_ENABLE_EXTRAS=0 npm run build",
+    "build:full": "VITE_ENABLE_EXTRAS=1 npm run build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:storage": "vitest --run --reporter=verbose server/__tests__/minimal-storage.test.ts",
+    "clean": "rm -rf dist node_modules/.vite",
+    "typecheck": "tsc --noEmit",
+    "typecheck:shared": "tsc --project shared/tsconfig.json --noEmit",
+    "lint:env": "node -e \"console.log('Environment check:'); console.log('STORAGE:', process.env.STORAGE || 'mem (default)'); console.log('VITE_ENABLE_EXTRAS:', process.env.VITE_ENABLE_EXTRAS || '0 (default)'); console.log('AI Keys:', process.env.GEMINI_API_KEY ? '✓ Gemini' : '✗ Gemini', process.env.OPENAI_API_KEY ? '✓ OpenAI' : '✗ OpenAI');\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -23,65 +33,33 @@
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",
-
     "@radix-ui/react-alert-dialog": "^1.1.7",
-
-
-
-
-
     "@radix-ui/react-dialog": "^1.1.7",
-
-
     "@radix-ui/react-label": "^2.1.3",
-
-
-
-
-
-
-
-
-
     "@radix-ui/react-slot": "^1.2.0",
-
-
     "@radix-ui/react-toast": "^1.2.7",
-
-
-
     "@tanstack/react-query": "^5.60.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.39.1",
     "drizzle-zod": "^0.7.0",
-
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-
-
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "nanoid": "^5.1.5",
-
     "openai": "^5.12.2",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "react": "^18.3.1",
-
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.55.0",
     "react-icons": "^5.4.0",
-
-
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-
-
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
@@ -94,6 +72,7 @@
     "@tailwindcss/vite": "^4.1.3",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "4.17.21",
@@ -103,6 +82,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^4.3.2",
     "@vitest/ui": "^3.2.4",
@@ -111,6 +91,7 @@
     "esbuild": "^0.25.0",
     "jsdom": "^27.0.0",
     "postcss": "^8.4.47",
+    "supertest": "^7.1.4",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
