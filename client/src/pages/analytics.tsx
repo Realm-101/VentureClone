@@ -4,10 +4,10 @@ import { Link } from "wouter";
 import { BarChart3, Home, ArrowLeft, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AnalyticsCharts } from "@/components/analytics-charts";
-import { BusinessComparison } from "@/components/business-comparison";
+import { AnalyticsChartsWrapper } from "@/components/experimental/analytics-charts-wrapper";
+import { BusinessComparisonWrapper } from "@/components/experimental/business-comparison-wrapper";
 import { SearchFilter } from "@/components/search-filter";
-import { BatchAnalysis } from "@/components/batch-analysis";
+import { BatchAnalysisWrapper } from "@/components/experimental/batch-analysis-wrapper";
 import type { BusinessAnalysis } from "@/types";
 
 export function Analytics() {
@@ -95,13 +95,13 @@ export function Analytics() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Charts Area */}
           <div className="lg:col-span-2">
-            <AnalyticsCharts analyses={displayAnalyses} />
+            <AnalyticsChartsWrapper analyses={displayAnalyses} />
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            <BatchAnalysis />
-            <BusinessComparison analyses={displayAnalyses} />
+            <BatchAnalysisWrapper />
+            <BusinessComparisonWrapper analyses={displayAnalyses} />
             
             {/* Quick Insights */}
             <Card className="bg-vc-card border-vc-border">

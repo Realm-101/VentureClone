@@ -10,7 +10,7 @@ import { AIInsightsPanel } from "@/components/ai-insights-panel";
 import { ProgressTracker } from "@/components/progress-tracker";
 import { RecentAnalyses } from "@/components/recent-analyses";
 import { QuickStats } from "@/components/quick-stats";
-import { BusinessComparison } from "@/components/business-comparison";
+import { BusinessComparisonWrapper } from "@/components/experimental/business-comparison-wrapper";
 import { AIService } from "@/lib/ai-service";
 import type { BusinessAnalysis } from "@/types";
 
@@ -125,7 +125,7 @@ export default function Dashboard() {
               <ProgressTracker analysis={selectedAnalysis} />
             )}
             
-            <BusinessComparison analyses={analyses || []} />
+            <BusinessComparisonWrapper analyses={analyses || []} />
             
             <QuickStats />
           </div>
