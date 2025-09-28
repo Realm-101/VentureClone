@@ -187,16 +187,17 @@ describe('End-to-End Integration Tests', () => {
         .expect(200);
 
       // Create second analysis using same session
+      const sessionCookie = firstResponse.headers['set-cookie']?.[0] || '';
       const secondResponse = await request(app)
         .post('/api/business-analyses/analyze')
         .send({ url: 'https://newer-business.com' })
-        .set('Cookie', firstResponse.headers['set-cookie'])
+        .set('Cookie', sessionCookie)
         .expect(200);
 
       // Retrieve list - should show newer analysis first
       const listResponse = await request(app)
         .get('/api/business-analyses')
-        .set('Cookie', secondResponse.headers['set-cookie'])
+        .set('Cookie', sessionCookie)
         .expect(200);
 
       expect(listResponse.body).toHaveLength(2);
@@ -567,16 +568,17 @@ describe('End-to-End Integration Tests', () => {
         .expect(200);
 
       // Create second analysis with same user session
+      const sessionCookie = firstResponse.headers['set-cookie']?.[0] || '';
       const secondResponse = await request(app)
         .post('/api/business-analyses/analyze')
         .send({ url: 'https://second.com' })
-        .set('Cookie', firstResponse.headers['set-cookie'])
+        .set('Cookie', sessionCookie)
         .expect(200);
 
       // Verify both analyses are stored and retrieved
       const listResponse = await request(app)
         .get('/api/business-analyses')
-        .set('Cookie', secondResponse.headers['set-cookie'])
+        .set('Cookie', sessionCookie)
         .expect(200);
 
       expect(listResponse.body).toHaveLength(2);

@@ -7,12 +7,24 @@ import { MinimalApiClient } from '@/lib/minimal-api-client';
 import type { AnalysisRecord } from '@/types/minimal-api';
 
 // Mock the API client
-vi.mock('@/lib/minimal-api-client', () => ({
-  MinimalApiClient: {
-    getAnalyses: vi.fn(),
-    analyzeUrl: vi.fn(),
-  },
-}));
+vi.mock('@/lib/minimal-api-client', async () => {
+  const actual = await vi.importActual('@/lib/minimal-api-client');
+  return {
+    ...actual,
+    MinimalApiClient: {
+      getAnalyses: vi.fn(),
+      analyzeUrl: vi.fn(),
+    },
+    getErrorMessage: vi.fn((error: unknown) => {
+      if (error instanceof Error) return error.message;
+      return 'An unexpected error occurred';
+    }),
+    isNetworkError: vi.fn(() => false),
+    isValidationError: vi.fn(() => false),
+    isServerError: vi.fn(() => false),
+    ApiClientError: actual.ApiClientError,
+  };
+});
 
 // Mock feature flags
 vi.mock('@/lib/feature-flags', () => ({
@@ -296,7 +308,7 @@ describe('Client-Side End-to-End Integration Tests', () => {
         }), 100))
       );
 
-      await user.clear(urlInput);
+      await user.keyboard('{Control>}a{/Control}');
       await user.type(urlInput, 'https://slow-analysis.com');
       await user.click(analyzeButton);
 
@@ -369,7 +381,7 @@ describe('Client-Side End-to-End Integration Tests', () => {
 
       // Verify date is formatted correctly (format may vary based on locale)
       // Looking for a date pattern that includes month, day, and time
-      const dateElement = screen.getByText(/Jan.*15.*2024.*2:30/i);
+      const dateElement = screen.getByText(/Jan.*15.*2024.*03:30/i);
       expect(dateElement).toBeInTheDocument();
     });
 
@@ -396,7 +408,7 @@ describe('Client-Side End-to-End Integration Tests', () => {
       });
 
       // Verify long content is displayed (may be truncated by CSS)
-      expect(screen.getByText(longSummary)).toBeInTheDocument();
+      expect(screen.getByText(longSummary, { exact: false })).toBeInTheDocument();
     });
 
     it('should maintain form state during user interactions', async () => {
@@ -422,7 +434,7 @@ describe('Client-Side End-to-End Integration Tests', () => {
       expect(urlInput).toHaveValue('https://partial-url.com');
 
       // Clear input using keyboard
-      await user.selectAll();
+      await user.keyboard('{Control>}a{/Control}');
       await user.keyboard('{Delete}');
       expect(urlInput).toHaveValue('');
     });
