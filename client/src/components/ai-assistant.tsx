@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Sparkles, Bot, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -176,12 +174,7 @@ export function AIAssistant() {
   return (
     <>
       {/* Floating Button */}
-      <motion.div
-        className="fixed bottom-6 right-6 z-50"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      >
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(!isOpen)}
           className="relative h-14 w-14 rounded-full bg-gradient-to-r from-vc-primary to-vc-secondary shadow-2xl hover:shadow-vc-primary/50 transition-all duration-300"
@@ -201,76 +194,28 @@ export function AIAssistant() {
             </span>
           )}
         </Button>
-      </motion.div>
+      </div>
 
       {/* Chat Window */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-96 h-[600px] max-h-[80vh]"
-          >
-            <Card className="h-full bg-vc-card/95 backdrop-blur-xl border-vc-border shadow-2xl overflow-hidden">
-              {/* Holographic Avatar Header */}
-              <div className="relative h-32 bg-gradient-to-br from-vc-primary/20 via-vc-secondary/20 to-vc-accent/20 border-b border-vc-border">
-                <div className="absolute inset-0 opacity-30">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-vc-primary/20 to-transparent animate-pulse" />
-                </div>
-                
-                {/* Holographic Avatar */}
-                <motion.div 
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                  animate={{ 
-                    rotateY: [0, 360],
-                  }}
-                  transition={{ 
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: "linear"
-                  }}
-                >
-                  <div className="relative w-20 h-20">
-                    {/* Holographic layers */}
-                    <motion.div 
-                      className="absolute inset-0 rounded-full bg-gradient-to-br from-vc-primary to-vc-secondary opacity-60"
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <motion.div 
-                      className="absolute inset-2 rounded-full bg-gradient-to-tr from-vc-accent to-vc-primary opacity-80"
-                      animate={{ scale: [1, 0.9, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                    />
-                    <div className="absolute inset-3 rounded-full bg-vc-dark flex items-center justify-center">
-                      <Bot className="h-8 w-8 text-vc-accent" />
-                    </div>
-                    
-                    {/* Holographic particles */}
-                    {[...Array(6)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-1 h-1 bg-vc-accent rounded-full"
-                        style={{
-                          left: '50%',
-                          top: '50%',
-                        }}
-                        animate={{
-                          x: [0, Math.cos(i * 60 * Math.PI / 180) * 40, 0],
-                          y: [0, Math.sin(i * 60 * Math.PI / 180) * 40, 0],
-                          opacity: [0, 1, 0],
-                        }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          delay: i * 0.5,
-                        }}
-                      />
-                    ))}
+      {isOpen && (
+        <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] max-h-[80vh]">
+          <Card className="h-full bg-vc-card/95 backdrop-blur-xl border-vc-border shadow-2xl overflow-hidden">
+            {/* Simple Avatar Header */}
+            <div className="relative h-32 bg-gradient-to-br from-vc-primary/20 via-vc-secondary/20 to-vc-accent/20 border-b border-vc-border">
+              <div className="absolute inset-0 opacity-30">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-vc-primary/20 to-transparent animate-pulse" />
+              </div>
+              
+              {/* Simple Avatar */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <div className="relative w-20 h-20">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-vc-primary to-vc-secondary opacity-60" />
+                  <div className="absolute inset-2 rounded-full bg-gradient-to-tr from-vc-accent to-vc-primary opacity-80" />
+                  <div className="absolute inset-3 rounded-full bg-vc-dark flex items-center justify-center">
+                    <Bot className="h-8 w-8 text-vc-accent" />
                   </div>
-                </motion.div>
+                </div>
+              </div>
                 
                 <div className="absolute bottom-2 left-4 right-4 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -284,59 +229,44 @@ export function AIAssistant() {
                 </div>
               </div>
 
-              {/* Messages */}
-              <ScrollArea className="flex-1 h-[calc(100%-12rem)] p-4">
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            {/* Messages */}
+            <div className="flex-1 h-[calc(100%-12rem)] p-4 overflow-y-auto">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-r from-vc-primary to-vc-secondary text-white'
+                          : 'bg-vc-dark border border-vc-border text-vc-text'
+                      }`}
                     >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.role === 'user'
-                            ? 'bg-gradient-to-r from-vc-primary to-vc-secondary text-white'
-                            : 'bg-vc-dark border border-vc-border text-vc-text'
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        <span className="text-xs opacity-70 mt-1 block">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-vc-dark border border-vc-border rounded-lg px-4 py-2">
-                        <div className="flex space-x-1">
-                          <motion.div
-                            className="w-2 h-2 bg-vc-primary rounded-full"
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ duration: 1.4, repeat: Infinity }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-vc-secondary rounded-full"
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ duration: 1.4, repeat: Infinity, delay: 0.2 }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-vc-accent rounded-full"
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ duration: 1.4, repeat: Infinity, delay: 0.4 }}
-                          />
-                        </div>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <span className="text-xs opacity-70 mt-1 block">
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-vc-dark border border-vc-border rounded-lg px-4 py-2">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-vc-primary rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-vc-secondary rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                        <div className="w-2 h-2 bg-vc-accent rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                       </div>
                     </div>
-                  )}
-                  
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
 
               {/* Input */}
               <div className="p-4 border-t border-vc-border">
@@ -360,10 +290,9 @@ export function AIAssistant() {
                   </Button>
                 </div>
               </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

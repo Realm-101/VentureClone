@@ -1,9 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, RadarChart, Radar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  Cell, PolarGrid, PolarAngleAxis, PolarRadiusAxis
-} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Activity, Zap, Target } from "lucide-react";
 import type { BusinessAnalysis } from "@/types";
@@ -13,8 +8,6 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ analyses }: AnalyticsChartsProps) {
-  const COLORS = ['#FF4500', '#DC143C', '#FFD700', '#20B2AA', '#9370DB'];
-
   // Prepare data for score distribution
   const scoreDistribution = [
     { range: '0-2', count: analyses.filter(a => (a.overallScore || 0) <= 2).length },
@@ -48,36 +41,6 @@ export function AnalyticsCharts({ analyses }: AnalyticsChartsProps) {
     },
   ] : [];
 
-  // Prepare data for stage progress
-  const stageProgress = [
-    { stage: 'Discovery', count: analyses.filter(a => a.currentStage === 1).length },
-    { stage: 'Filter', count: analyses.filter(a => a.currentStage === 2).length },
-    { stage: 'MVP', count: analyses.filter(a => a.currentStage === 3).length },
-    { stage: 'Testing', count: analyses.filter(a => a.currentStage === 4).length },
-    { stage: 'Scaling', count: analyses.filter(a => a.currentStage === 5).length },
-    { stage: 'Automation', count: analyses.filter(a => a.currentStage === 6).length },
-  ];
-
-  // Prepare radar chart data for top analyses
-  const topAnalyses = analyses
-    .filter(a => a.scoreDetails)
-    .sort((a, b) => (b.overallScore || 0) - (a.overallScore || 0))
-    .slice(0, 3);
-
-  const radarData = topAnalyses.length > 0 ? [
-    'technicalComplexity',
-    'marketOpportunity',
-    'competitiveLandscape',
-    'resourceRequirements',
-    'timeToMarket'
-  ].map(key => ({
-    criteria: key.replace(/([A-Z])/g, ' $1').trim(),
-    ...topAnalyses.reduce((acc, analysis, index) => ({
-      ...acc,
-      [`business${index + 1}`]: analysis.scoreDetails?.[key as keyof typeof analysis.scoreDetails]?.score || 0
-    }), {})
-  })) : [];
-
   if (analyses.length === 0) {
     return (
       <Card className="bg-vc-card border-vc-border" data-testid="card-analytics">
@@ -108,22 +71,15 @@ export function AnalyticsCharts({ analyses }: AnalyticsChartsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={scoreDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="range" stroke="#999" />
-              <YAxis stroke="#999" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }}
-                labelStyle={{ color: '#FFD700' }}
-              />
-              <Bar dataKey="count" fill="#FF4500">
-                {scoreDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-48 flex items-center justify-center bg-gray-100 rounded">
+            <div className="text-center">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="text-gray-600">Chart placeholder</p>
+              <p className="text-sm text-gray-500">
+                {scoreDistribution.map(d => `${d.range}: ${d.count}`).join(', ')}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -137,25 +93,17 @@ export function AnalyticsCharts({ analyses }: AnalyticsChartsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={criteriaComparison}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="criteria" stroke="#999" />
-                <YAxis domain={[0, 10]} stroke="#999" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }}
-                  labelStyle={{ color: '#FFD700' }}
-                  formatter={(value: number) => value.toFixed(1)}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="average" 
-                  stroke="#DC143C" 
-                  strokeWidth={2}
-                  dot={{ fill: '#FFD700', r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-48 flex items-center justify-center bg-gray-100 rounded">
+              <div className="text-center">
+                <div className="text-4xl mb-2">📈</div>
+                <p className="text-gray-600">Line chart placeholder</p>
+                <div className="text-sm text-gray-500 space-y-1">
+                  {criteriaComparison.map(c => (
+                    <div key={c.criteria}>{c.criteria}: {c.average.toFixed(1)}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -168,69 +116,39 @@ export function AnalyticsCharts({ analyses }: AnalyticsChartsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={stageProgress.filter(s => s.count > 0)}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ stage, count }) => `${stage}: ${count}`}
-                  outerRadius={70}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {stageProgress.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="h-48 flex items-center justify-center bg-gray-100 rounded">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🥧</div>
+                <p className="text-gray-600">Pie chart placeholder</p>
+                <div className="text-sm text-gray-500">
+                  {analyses.length} total analyses
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Radar Comparison for Top 3 */}
-      {topAnalyses.length > 0 && (
-        <Card className="bg-vc-card border-vc-border">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-vc-text flex items-center">
-              <Target className="mr-2 h-5 w-5 text-vc-primary" />
-              Top Businesses Comparison
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#333" />
-                <PolarAngleAxis dataKey="criteria" stroke="#999" />
-                <PolarRadiusAxis angle={90} domain={[0, 10]} stroke="#999" />
-                {topAnalyses.map((analysis, index) => (
-                  <Radar
-                    key={index}
-                    name={analysis.businessModel || `Business ${index + 1}`}
-                    dataKey={`business${index + 1}`}
-                    stroke={COLORS[index]}
-                    fill={COLORS[index]}
-                    fillOpacity={0.3}
-                  />
-                ))}
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-                <Legend 
-                  wrapperStyle={{ color: '#999' }}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Top Businesses */}
+      <Card className="bg-vc-card border-vc-border">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-vc-text flex items-center">
+            <Target className="mr-2 h-5 w-5 text-vc-primary" />
+            Top Businesses Comparison
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center bg-gray-100 rounded">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🎯</div>
+              <p className="text-gray-600">Radar chart placeholder</p>
+              <p className="text-sm text-gray-500">
+                Showing top {Math.min(3, analyses.length)} businesses
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

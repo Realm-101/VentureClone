@@ -99,7 +99,12 @@
   - Update existing components to respect feature flag settings
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 9. Optimize bundle size and remove unused dependencies
+- [x] 9. Optimize bundle size and remove unused dependencies
+
+
+
+
+
   - Remove unused dependencies like embla-carousel-react, framer-motion, cmdk, vaul, recharts
   - Update HTML template to use system fonts instead of web fonts
   - Audit and remove unused Radix UI components and other heavy libraries

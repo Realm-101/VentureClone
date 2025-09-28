@@ -71,11 +71,37 @@ export default {
         'vc-text-muted': 'var(--vc-text-muted)',
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
-        inter: ['Inter', 'sans-serif'],
-        'mono': ['Roboto Mono', 'monospace']
+        sans: [
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          '"Noto Sans"',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"'
+        ],
+        serif: [
+          'Georgia',
+          'Cambria',
+          '"Times New Roman"',
+          'Times',
+          'serif'
+        ],
+        mono: [
+          'ui-monospace',
+          'SFMono-Regular',
+          '"SF Mono"',
+          'Consolas',
+          '"Liberation Mono"',
+          'Menlo',
+          'monospace'
+        ]
       },
       boxShadow: {
         'neon': '0 0 20px rgba(255, 69, 0, 0.3)',

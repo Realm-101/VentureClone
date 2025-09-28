@@ -58,7 +58,7 @@ export const insertAiProviderSchema = createInsertSchema(aiProviders).pick({
   isActive: true,
 });
 
-export const insertBusinessAnalysisSchema = createInsertSchema(businessAnalyses).pick({
+export const insertBusinessAnalysisSchema: any = createInsertSchema(businessAnalyses).pick({
   userId: true,
   url: true,
   businessModel: true,
@@ -71,7 +71,7 @@ export const insertBusinessAnalysisSchema = createInsertSchema(businessAnalyses)
   stageData: true,
 });
 
-export const insertWorkflowStageSchema = createInsertSchema(workflowStages).pick({
+export const insertWorkflowStageSchema: any = createInsertSchema(workflowStages).pick({
   analysisId: true,
   stageNumber: true,
   stageName: true,
