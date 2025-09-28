@@ -29,7 +29,7 @@ URL: ${url}
 
 Provide a focused analysis that helps understand the business model and market opportunity.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -42,8 +42,26 @@ Provide a focused analysis that helps understand the business model and market o
       }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 200,
-      }
+        maxOutputTokens: 1000,
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH", 
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_NONE"
+        }
+      ]
     }),
   });
 
@@ -54,7 +72,7 @@ Provide a focused analysis that helps understand the business model and market o
 
   const data = await response.json();
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Analysis could not be completed.";
-  return { content, model: "gemini:gemini-1.5-flash" };
+  return { content, model: "gemini:gemini-2.5-flash-preview-05-20" };
 }
 
 // OpenAI API integration as fallback

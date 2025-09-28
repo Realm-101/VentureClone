@@ -1,13 +1,18 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { userMiddleware } from "./middleware/user";
+import { requestIdMiddleware } from "./middleware/requestId";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(requestIdMiddleware);
 app.use(userMiddleware);
 
 app.use((req, res, next) => {

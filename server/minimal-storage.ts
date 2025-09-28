@@ -30,8 +30,8 @@ export class MemStorage implements IStorage {
 
   async listAnalyses(userId: string): Promise<AnalysisRecord[]> {
     const userAnalyses = this.analyses.get(userId) || [];
-    // Return in reverse chronological order (newest first)
-    return userAnalyses.sort((a, b) => 
+    // Return sorted copy in reverse chronological order (newest first) without mutating original
+    return [...userAnalyses].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
