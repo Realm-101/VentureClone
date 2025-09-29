@@ -25,11 +25,18 @@ export const structuredAnalysisSchema = z.object({
   }),
   technical: z.object({
     techStack: z.array(z.string()).optional(),
+    uiColors: z.array(z.string()).optional(),
+    keyPages: z.array(z.string()).optional(),
   }).optional(),
   data: z.object({
+    trafficEstimates: z.object({
+      value: z.string(),
+      source: z.string().optional(),
+    }).optional(),
     keyMetrics: z.array(z.object({
       name: z.string(),
       value: z.string(),
+      source: z.string().optional(),
     })).optional(),
   }).optional(),
   synthesis: z.object({
