@@ -16,23 +16,38 @@ export class AIProviderService {
   private openaiClient: OpenAI | null = null;
   private geminiClient: GoogleGenAI | null = null;
   private grokClient: OpenAI | null = null;
+  private readonly timeoutMs: number;
 
-  constructor(private apiKey: string, private provider: AIProvider) {
+  constructor(private apiKey: string, private provider: AIProvider, timeoutMs: number = 15000) {
+    this.timeoutMs = timeoutMs;
     this.initializeClient();
   }
 
   private initializeClient() {
+    // Enhanced timeout configuration for all AI providers (requirement 2.1)
+    const clientOptions = {
+      timeout: this.timeoutMs,
+      maxRetries: 1, // Reduce retries to fail faster
+    };
+
     switch (this.provider) {
       case 'openai':
-        this.openaiClient = new OpenAI({ apiKey: this.apiKey });
+        this.openaiClient = new OpenAI({ 
+          apiKey: this.apiKey,
+          ...clientOptions
+        });
         break;
       case 'gemini':
-        this.geminiClient = new GoogleGenAI({ apiKey: this.apiKey });
+        this.geminiClient = new GoogleGenAI({ 
+          apiKey: this.apiKey,
+          // Note: GoogleGenAI client timeout configuration may differ
+        });
         break;
       case 'grok':
         this.grokClient = new OpenAI({ 
           baseURL: "https://api.x.ai/v1", 
-          apiKey: this.apiKey 
+          apiKey: this.apiKey,
+          ...clientOptions
         });
         break;
     }
@@ -40,34 +55,64 @@ export class AIProviderService {
 
   async generateContent(prompt: string, systemPrompt?: string): Promise<AIResponse> {
     try {
-      switch (this.provider) {
-        case 'openai':
-          return await this.generateOpenAIContent(prompt, systemPrompt);
-        case 'gemini':
-          return await this.generateGeminiContent(prompt, systemPrompt);
-        case 'grok':
-          return await this.generateGrokContent(prompt, systemPrompt);
-        default:
-          throw new Error(`Unsupported AI provider: ${this.provider}`);
-      }
+      // Add timeout wrapper for additional protection (requirement 2.1, 2.2)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`AI provider ${this.provider} timeout after ${this.timeoutMs}ms`));
+        }, this.timeoutMs);
+      });
+
+      const contentPromise = (async () => {
+        switch (this.provider) {
+          case 'openai':
+            return await this.generateOpenAIContent(prompt, systemPrompt);
+          case 'gemini':
+            return await this.generateGeminiContent(prompt, systemPrompt);
+          case 'grok':
+            return await this.generateGrokContent(prompt, systemPrompt);
+          default:
+            throw new Error(`Unsupported AI provider: ${this.provider}`);
+        }
+      })();
+
+      return await Promise.race([contentPromise, timeoutPromise]);
     } catch (error) {
+      // Enhanced error handling with timeout detection
+      if (error instanceof Error && error.message.includes('timeout')) {
+        throw new Error(`AI provider ${this.provider} request timeout after ${this.timeoutMs}ms`);
+      }
       throw new Error(`AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   async generateStructuredContent(prompt: string, schema: any, systemPrompt?: string): Promise<any> {
     try {
-      switch (this.provider) {
-        case 'openai':
-          return await this.generateOpenAIStructuredContent(prompt, schema, systemPrompt);
-        case 'gemini':
-          return await this.generateGeminiStructuredContent(prompt, schema, systemPrompt);
-        case 'grok':
-          return await this.generateGrokStructuredContent(prompt, schema, systemPrompt);
-        default:
-          throw new Error(`Unsupported AI provider: ${this.provider}`);
-      }
+      // Add timeout wrapper for structured content generation
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`AI provider ${this.provider} structured content timeout after ${this.timeoutMs}ms`));
+        }, this.timeoutMs);
+      });
+
+      const contentPromise = (async () => {
+        switch (this.provider) {
+          case 'openai':
+            return await this.generateOpenAIStructuredContent(prompt, schema, systemPrompt);
+          case 'gemini':
+            return await this.generateGeminiStructuredContent(prompt, schema, systemPrompt);
+          case 'grok':
+            return await this.generateGrokStructuredContent(prompt, schema, systemPrompt);
+          default:
+            throw new Error(`Unsupported AI provider: ${this.provider}`);
+        }
+      })();
+
+      return await Promise.race([contentPromise, timeoutPromise]);
     } catch (error) {
+      // Enhanced error handling with timeout detection
+      if (error instanceof Error && error.message.includes('timeout')) {
+        throw new Error(`AI provider ${this.provider} structured content timeout after ${this.timeoutMs}ms`);
+      }
       throw new Error(`Structured AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

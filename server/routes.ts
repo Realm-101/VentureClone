@@ -67,7 +67,7 @@ Provide a focused analysis that helps understand the business model and market o
         }
       ]
     }),
-    timeoutMs: 8000
+    timeoutMs: 15000  // Enhanced timeout per requirement 2.1
   });
 
   if (!response.ok) {
@@ -114,7 +114,7 @@ Provide a focused analysis that helps understand the business model and market o
       max_tokens: 200,
       temperature: 0.7,
     }),
-    timeoutMs: 8000
+    timeoutMs: 15000  // Enhanced timeout per requirement 2.1
   });
 
   if (!response.ok) {
