@@ -12,8 +12,8 @@ const hits = new Map<string, number[]>();
 let cleanupInterval: NodeJS.Timeout | null = null;
 
 export function createRateLimit(options: RateLimitOptions = {}) {
-  const windowMs = options.windowMs || 300000; // 5 minutes default
-  const max = options.max || 10; // 10 requests default
+  const windowMs = options.windowMs || parseInt(process.env.RATE_LIMIT_WINDOW_MS || '300000'); // 5 minutes default
+  const max = options.max || parseInt(process.env.RATE_LIMIT_MAX || '10'); // 10 requests default
 
   // Start cleanup interval if not already running
   if (!cleanupInterval) {
@@ -60,8 +60,11 @@ export function createRateLimit(options: RateLimitOptions = {}) {
   };
 }
 
-// Export a default rate limiter with standard settings
-export const rateLimit = createRateLimit();
+// Export a default rate limiter with environment-configured settings
+export const rateLimit = createRateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '300000'),
+  max: parseInt(process.env.RATE_LIMIT_MAX || '10')
+});
 
 // Cleanup function for graceful shutdown
 export function cleanupRateLimit() {
