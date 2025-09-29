@@ -23,20 +23,32 @@
   - Wire middleware into main server setup before existing middleware
   - _Requirements: 5.4_
 
-- [ ] 3. Create fetch timeout utility
+- [x] 3. Create fetch timeout utility
+
+
+
+
+
   - Implement `server/lib/fetchWithTimeout.ts` with AbortController
   - Add configurable timeout parameter with 8-second default
   - Handle timeout cleanup and error conversion
   - Make compatible with existing fetch usage patterns
   - _Requirements: 1.1, 1.2_
 
-- [ ] 4. Fix storage data mutation
+- [x] 4. Fix storage data mutation
+
+
+
+
+
   - Modify `MemStorage.listAnalyses()` to return sorted copy instead of mutating original
   - Add unit test to verify non-mutating behavior
   - Ensure concurrent read operations don't interfere
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 5. Implement centralized error handling
+- [-] 5. Implement centralized error handling
+
+
   - Create `server/middleware/errorHandler.ts` with consistent JSON error format
   - Map HTTP status codes to standardized error codes
   - Include request ID in all error responses
