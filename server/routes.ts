@@ -5,6 +5,7 @@ import { rateLimit } from "./middleware/rateLimit";
 import { fetchWithTimeout } from "./lib/fetchWithTimeout";
 import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
+import { structuredAnalysisSchema, type StructuredAnalysis } from "@shared/schema";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -16,22 +17,71 @@ function isValidUrl(string: string): boolean {
   }
 }
 
-// Google Gemini API integration for business analysis
-async function analyzeUrlWithGemini(url: string): Promise<{ content: string; model: string }> {
+// Helper function to parse structured analysis with graceful fallback
+function parseStructuredAnalysis(content: string): { structured?: StructuredAnalysis; summary: string } {
+  try {
+    // Try to parse as JSON first
+    const parsed = JSON.parse(content);
+    
+    // Validate against schema
+    const validated = structuredAnalysisSchema.parse(parsed);
+    
+    // Generate summary from structured data
+    const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
+    
+    return { structured: validated, summary };
+  } catch (error) {
+    // Graceful fallback to plain text
+    console.warn("Failed to parse structured analysis, falling back to plain text:", error);
+    return { summary: content };
+  }
+}
+
+// Google Gemini API integration for business analysis with structured output
+async function analyzeUrlWithGemini(url: string): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
   const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY missing");
   }
 
-  const prompt = `Analyze this business URL and provide a concise business teardown in 100-150 words covering:
-1. Value proposition
-2. Target audience  
-3. Monetization strategy
+  const structuredPrompt = `Analyze this business URL and provide a structured JSON response with the following format:
+
+{
+  "overview": {
+    "valueProposition": "Brief description of the core value proposition",
+    "targetAudience": "Description of the target audience",
+    "monetization": "How the business makes money"
+  },
+  "market": {
+    "competitors": [
+      {"name": "Competitor name", "url": "optional URL", "notes": "optional notes"}
+    ],
+    "swot": {
+      "strengths": ["strength 1", "strength 2"],
+      "weaknesses": ["weakness 1", "weakness 2"],
+      "opportunities": ["opportunity 1", "opportunity 2"],
+      "threats": ["threat 1", "threat 2"]
+    }
+  },
+  "technical": {
+    "techStack": ["technology 1", "technology 2"]
+  },
+  "data": {
+    "keyMetrics": [
+      {"name": "metric name", "value": "metric value"}
+    ]
+  },
+  "synthesis": {
+    "summary": "Concise 100-150 word business analysis summary",
+    "keyInsights": ["insight 1", "insight 2", "insight 3"],
+    "nextActions": ["action 1", "action 2", "action 3"]
+  }
+}
 
 URL: ${url}
 
-Provide a focused analysis that helps understand the business model and market opportunity.`;
+Respond ONLY with valid JSON. Do not include any text before or after the JSON.`;
 
   const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
     method: "POST",
@@ -41,12 +91,12 @@ Provide a focused analysis that helps understand the business model and market o
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: prompt
+          text: structuredPrompt
         }]
       }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 2000,
       },
       safetySettings: [
         {
@@ -76,26 +126,57 @@ Provide a focused analysis that helps understand the business model and market o
   }
 
   const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Analysis could not be completed.";
-  return { content, model: "gemini:gemini-2.5-flash-preview-05-20" };
+  const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Analysis could not be completed.";
+  
+  // Parse structured analysis with graceful fallback
+  const { structured, summary } = parseStructuredAnalysis(rawContent);
+  
+  return { content: summary, model: "gemini:gemini-2.5-flash-preview-05-20", structured };
 }
 
-// OpenAI API integration as fallback
-async function analyzeUrlWithOpenAI(url: string): Promise<{ content: string; model: string }> {
+// OpenAI API integration as fallback with structured output
+async function analyzeUrlWithOpenAI(url: string): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
   const apiKey = process.env.OPENAI_API_KEY;
   
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY missing");
   }
 
-  const prompt = `Analyze this business URL and provide a concise business teardown in 100-150 words covering:
-1. Value proposition
-2. Target audience  
-3. Monetization strategy
+  const structuredPrompt = `Analyze this business URL and provide a structured JSON response with the following format:
 
-URL: ${url}
+{
+  "overview": {
+    "valueProposition": "Brief description of the core value proposition",
+    "targetAudience": "Description of the target audience",
+    "monetization": "How the business makes money"
+  },
+  "market": {
+    "competitors": [
+      {"name": "Competitor name", "url": "optional URL", "notes": "optional notes"}
+    ],
+    "swot": {
+      "strengths": ["strength 1", "strength 2"],
+      "weaknesses": ["weakness 1", "weakness 2"],
+      "opportunities": ["opportunity 1", "opportunity 2"],
+      "threats": ["threat 1", "threat 2"]
+    }
+  },
+  "technical": {
+    "techStack": ["technology 1", "technology 2"]
+  },
+  "data": {
+    "keyMetrics": [
+      {"name": "metric name", "value": "metric value"}
+    ]
+  },
+  "synthesis": {
+    "summary": "Concise 100-150 word business analysis summary",
+    "keyInsights": ["insight 1", "insight 2", "insight 3"],
+    "nextActions": ["action 1", "action 2", "action 3"]
+  }
+}
 
-Provide a focused analysis that helps understand the business model and market opportunity.`;
+URL: ${url}`;
 
   const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -107,12 +188,17 @@ Provide a focused analysis that helps understand the business model and market o
       model: "gpt-4o-mini",
       messages: [
         {
+          role: "system",
+          content: "You are a business analyst. Respond only with valid JSON in the exact format requested."
+        },
+        {
           role: "user",
-          content: prompt
+          content: structuredPrompt
         }
       ],
-      max_tokens: 200,
+      max_tokens: 1500,
       temperature: 0.7,
+      response_format: { type: "json_object" }
     }),
     timeoutMs: 15000  // Enhanced timeout per requirement 2.1
   });
@@ -123,12 +209,16 @@ Provide a focused analysis that helps understand the business model and market o
   }
 
   const data = await response.json();
-  const content = data.choices[0]?.message?.content || "Analysis could not be completed.";
-  return { content, model: "openai:gpt-4o-mini" };
+  const rawContent = data.choices[0]?.message?.content || "Analysis could not be completed.";
+  
+  // Parse structured analysis with graceful fallback
+  const { structured, summary } = parseStructuredAnalysis(rawContent);
+  
+  return { content: summary, model: "openai:gpt-4o-mini", structured };
 }
 
 // Multi-provider analysis with Gemini as primary and OpenAI as fallback
-async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: string }> {
+async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
   // Try Gemini first
   try {
     console.log("Attempting analysis with Gemini...");
@@ -207,12 +297,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Perform AI analysis with multi-provider support
       const analysisResult = await analyzeUrlWithAI(url);
 
-      // Save analysis to storage
+      // Save analysis to storage with structured data
       try {
         const analysis = await minimalStorage.createAnalysis(req.userId, {
           url,
           summary: analysisResult.content,
-          model: analysisResult.model
+          model: analysisResult.model,
+          structured: analysisResult.structured
         });
 
         res.json(analysis);

@@ -40,7 +40,11 @@ export function requestIdMiddleware(req: Request, res: Response, next: NextFunct
   // Add request completion handler for timing
   res.on('finish', () => {
     const duration = Date.now() - req.startTime;
-    res.setHeader('X-Response-Time', `${duration}ms`);
+    
+    // Only set header if response hasn't been sent yet
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${duration}ms`);
+    }
     
     // Log slow requests in development
     if (process.env.NODE_ENV === 'development' && duration > 1000) {
