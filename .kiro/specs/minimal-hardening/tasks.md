@@ -46,7 +46,22 @@
   - Ensure concurrent read operations don't interfere
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [-] 5. Implement centralized error handling
+- [x] 5. Implement centralized error handling
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   - Create `server/middleware/errorHandler.ts` with consistent JSON error format
@@ -55,7 +70,11 @@
   - Wire error handler as final middleware in server setup
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 6. Create rate limiting middleware
+- [x] 6. Create rate limiting middleware
+
+
+
+
   - Implement `server/middleware/rateLimit.ts` with sliding window algorithm
   - Use in-memory Map for tracking requests per IP+user combination
   - Add configurable window size and request limits
@@ -63,14 +82,24 @@
   - Return 429 status with RATE_LIMITED error code when exceeded
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 7. Apply hardening to analyze endpoint
+
+- [x] 7. Apply hardening to analyze endpoint
+
+
+
+
   - Update analyze route to use rate limiting middleware
   - Replace fetch calls with fetchWithTimeout utility
   - Update error responses to include request IDs and standardized codes
   - Handle AI provider timeouts with 502 status and appropriate error codes
   - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2_
 
-- [ ] 8. Create health check endpoint
+- [x] 8. Create health check endpoint
+
+
+
+
+
   - Implement `server/routes/healthz.ts` with status information
   - Detect storage mode (memory vs database) from storage instance
   - Check AI provider configuration by testing for API keys
@@ -78,7 +107,12 @@
   - Wire health check route into main API router
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 9. Add CI pipeline configuration
+- [x] 9. Add CI pipeline configuration
+
+
+
+
+
   - Create `.github/workflows/ci.yml` with Node.js setup
   - Configure CI to run on pushes to main and rescue-min branches
   - Configure CI to run on pull requests to main branch
@@ -86,7 +120,10 @@
   - Add test execution step with vitest
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 10. Update package.json scripts
+- [-] 10. Update package.json scripts
+
+
+
   - Add `typecheck` script for TypeScript compilation without emission
   - Add `test` script for running vitest test suite
   - Add `ci:local` script for running both typecheck and tests locally

@@ -1,6 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { minimalStorage } from "./minimal-storage";
+import { rateLimit } from "./middleware/rateLimit";
+import { fetchWithTimeout } from "./lib/fetchWithTimeout";
+import { AppError } from "./middleware/errorHandler";
+import { healthzHandler } from "./routes/healthz";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -29,7 +33,7 @@ URL: ${url}
 
 Provide a focused analysis that helps understand the business model and market opportunity.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -63,11 +67,12 @@ Provide a focused analysis that helps understand the business model and market o
         }
       ]
     }),
+    timeoutMs: 8000
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+    throw new AppError(`Gemini API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`, 502, 'AI_PROVIDER_DOWN');
   }
 
   const data = await response.json();
@@ -92,7 +97,7 @@ URL: ${url}
 
 Provide a focused analysis that helps understand the business model and market opportunity.`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -109,11 +114,12 @@ Provide a focused analysis that helps understand the business model and market o
       max_tokens: 200,
       temperature: 0.7,
     }),
+    timeoutMs: 8000
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+    throw new AppError(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`, 502, 'AI_PROVIDER_DOWN');
   }
 
   const data = await response.json();
@@ -130,13 +136,29 @@ async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: 
   } catch (geminiError) {
     console.warn("Gemini analysis failed, falling back to OpenAI:", geminiError);
     
+    // If Gemini failed due to timeout, don't try OpenAI
+    if (geminiError instanceof Error && geminiError.name === 'TimeoutError') {
+      throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
+    }
+    
     // Fallback to OpenAI
     try {
       console.log("Attempting analysis with OpenAI...");
       return await analyzeUrlWithOpenAI(url);
     } catch (openaiError) {
       console.error("Both Gemini and OpenAI failed:", { geminiError, openaiError });
-      throw new Error("Both AI providers failed. Please check your API keys and try again.");
+      
+      // Handle timeout errors specifically
+      if (openaiError instanceof Error && openaiError.name === 'TimeoutError') {
+        throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
+      }
+      
+      // If both providers failed with non-timeout errors, return 502
+      if (geminiError instanceof AppError || openaiError instanceof AppError) {
+        throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
+      }
+      
+      throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
     }
   }
 }
@@ -144,20 +166,23 @@ async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("=== REGISTERING MINIMAL ROUTES ===");
   
+  // GET /api/healthz - Health check endpoint
+  app.get("/api/healthz", healthzHandler);
+  
   // GET /api/business-analyses - List user's analyses in reverse chronological order
-  app.get("/api/business-analyses", async (req, res) => {
+  app.get("/api/business-analyses", async (req, res, next) => {
     console.log("GET /api/business-analyses hit");
     try {
       const analyses = await minimalStorage.listAnalyses(req.userId);
       res.json(analyses);
     } catch (error) {
       console.error("Failed to fetch analyses:", error);
-      res.status(500).json({ error: "Failed to fetch business analyses" });
+      next(new AppError("Failed to fetch business analyses", 500, 'INTERNAL'));
     }
   });
 
   // POST /api/business-analyses/analyze - Create new analysis via multi-provider AI integration
-  app.post("/api/business-analyses/analyze", async (req, res) => {
+  app.post("/api/business-analyses/analyze", rateLimit, async (req, res, next) => {
     console.log("=== NEW MINIMAL ROUTE HIT ===", req.body);
     try {
       const { url } = req.body;
@@ -165,31 +190,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate URL is provided
       if (!url) {
         console.log("URL missing");
-        return res.status(400).json({ error: "URL is required" });
+        throw new AppError("URL is required", 400, 'BAD_REQUEST');
       }
 
       // Validate URL format
       if (!isValidUrl(url)) {
         console.log("Invalid URL format:", url);
-        return res.status(400).json({ error: "Invalid URL format" });
+        throw new AppError("Invalid URL format", 400, 'BAD_REQUEST');
       }
 
       // Check for at least one AI provider API key
       if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-        return res.status(500).json({ error: "At least one AI provider API key (GEMINI_API_KEY or OPENAI_API_KEY) is required" });
+        throw new AppError("At least one AI provider API key (GEMINI_API_KEY or OPENAI_API_KEY) is required", 500, 'CONFIG_MISSING');
       }
 
       // Perform AI analysis with multi-provider support
-      let analysisResult: { content: string; model: string };
-      try {
-        analysisResult = await analyzeUrlWithAI(url);
-      } catch (error) {
-        console.error("AI analysis failed:", error);
-        if (error instanceof Error) {
-          return res.status(500).json({ error: error.message });
-        }
-        return res.status(500).json({ error: "Failed to analyze URL with AI providers" });
-      }
+      const analysisResult = await analyzeUrlWithAI(url);
 
       // Save analysis to storage
       const analysis = await minimalStorage.createAnalysis(req.userId, {
@@ -201,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analysis);
     } catch (error) {
       console.error("Analysis creation failed:", error);
-      res.status(500).json({ error: "Failed to create business analysis" });
+      next(error);
     }
   });
 

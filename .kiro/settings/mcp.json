@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
+    }
+  },
+  "chatprd": {
+    "url": "https://app.chatprd.ai/mcp",
+    "headers": {}
+  },
+  "Neon": {
+    "url": "https://mcp.neon.tech/mcp",
+    "headers": {}
+  },
+  "Context7": {
+    "url": "https://mcp.context7.com/mcp",
+    "headers": {}
+  }
+}

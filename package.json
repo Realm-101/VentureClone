@@ -25,6 +25,7 @@
     "clean": "rm -rf dist node_modules/.vite",
     "typecheck": "tsc --noEmit",
     "typecheck:shared": "tsc --project shared/tsconfig.json --noEmit",
+    "ci:local": "npm run typecheck && npm run test",
     "lint:env": "node -e \"console.log('Environment check:'); console.log('STORAGE:', process.env.STORAGE || 'mem (default)'); console.log('VITE_ENABLE_EXTRAS:', process.env.VITE_ENABLE_EXTRAS || '0 (default)'); console.log('AI Keys:', process.env.GEMINI_API_KEY ? '✓ Gemini' : '✗ Gemini', process.env.OPENAI_API_KEY ? '✓ OpenAI' : '✗ OpenAI');\""
   },
   "dependencies": {
