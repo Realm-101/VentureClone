@@ -1,9 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 
-interface RequestWithId extends Request {
-  requestId: string;
-}
-
 interface ErrorResponse {
   error: string;
   code: string;
@@ -49,10 +45,15 @@ export class AppError extends Error {
 
 export const errorHandler = (
   err: Error | AppError,
-  req: RequestWithId,
+  req: Request,
   res: Response,
   next: NextFunction
 ): void => {
+  // Check if response was already sent
+  if (res.headersSent) {
+    return next(err);
+  }
+
   // Default to 500 server error
   let statusCode = 500;
   let errorCode = 'INTERNAL';

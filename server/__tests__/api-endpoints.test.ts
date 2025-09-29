@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { registerRoutes } from '../routes';
 import { userMiddleware } from '../middleware/user';
+import { requestIdMiddleware } from '../middleware/requestId';
+import { errorHandler } from '../middleware/errorHandler';
 import { minimalStorage } from '../minimal-storage';
 
 // Mock the storage module
@@ -25,15 +27,19 @@ describe('API Endpoints', () => {
   let server: any;
 
   beforeAll(async () => {
-    // Set up Express app with middleware
+    // Set up Express app with middleware (matching main server setup)
     app = express();
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use(cookieParser());
+    app.use(requestIdMiddleware);
     app.use(userMiddleware);
     
     // Register routes
     server = await registerRoutes(app);
+    
+    // Add error handler as final middleware (matching main server setup)
+    app.use(errorHandler);
   });
 
   beforeEach(() => {
@@ -97,7 +103,11 @@ describe('GET /api/business-analyses', () => {
         .get('/api/business-analyses')
         .expect(500);
 
-      expect(response.body).toEqual({ error: 'Failed to fetch business analyses' });
+      expect(response.body).toEqual({
+        error: 'Failed to fetch business analyses',
+        code: 'INTERNAL',
+        requestId: expect.any(String)
+      });
     });
 
     it('should use userId from cookie middleware', async () => {
@@ -150,7 +160,11 @@ describe('GET /api/business-analyses', () => {
           .send({})
           .expect(400);
 
-        expect(response.body).toEqual({ error: 'URL is required' });
+        expect(response.body).toEqual({
+          error: 'URL is required',
+          code: 'BAD_REQUEST',
+          requestId: expect.any(String)
+        });
         expect(minimalStorage.createAnalysis).not.toHaveBeenCalled();
       });
 
@@ -160,7 +174,11 @@ describe('GET /api/business-analyses', () => {
           .send({ url: 'not-a-valid-url' })
           .expect(400);
 
-        expect(response.body).toEqual({ error: 'Invalid URL format' });
+        expect(response.body).toEqual({
+          error: 'Invalid URL format',
+          code: 'BAD_REQUEST',
+          requestId: expect.any(String)
+        });
         expect(minimalStorage.createAnalysis).not.toHaveBeenCalled();
       });
 
@@ -234,8 +252,10 @@ describe('GET /api/business-analyses', () => {
           .send({ url: 'https://example.com' })
           .expect(500);
 
-        expect(response.body).toEqual({ 
-          error: 'At least one AI provider API key (GEMINI_API_KEY or OPENAI_API_KEY) is required' 
+        expect(response.body).toEqual({
+          error: 'At least one AI provider API key (GEMINI_API_KEY or OPENAI_API_KEY) is required',
+          code: 'CONFIG_MISSING',
+          requestId: expect.any(String)
         });
         expect(minimalStorage.createAnalysis).not.toHaveBeenCalled();
       });
@@ -476,7 +496,7 @@ describe('GET /api/business-analyses', () => {
           {
             url: 'https://example.com',
             summary: 'Successful analysis content',
-            model: 'gemini:gemini-1.5-flash'
+            model: 'gemini:gemini-2.5-flash-preview-05-20'
           }
         );
         expect(response.body).toEqual(mockCreatedAnalysis);
@@ -501,7 +521,11 @@ describe('GET /api/business-analyses', () => {
           .send({ url: 'https://example.com' })
           .expect(500);
 
-        expect(response.body).toEqual({ error: 'Failed to create business analysis' });
+        expect(response.body).toEqual({
+          error: 'Failed to create business analysis',
+          code: 'INTERNAL',
+          requestId: expect.any(String)
+        });
       });
 
       it('should not save to storage if AI analysis fails', async () => {

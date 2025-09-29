@@ -208,13 +208,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysisResult = await analyzeUrlWithAI(url);
 
       // Save analysis to storage
-      const analysis = await minimalStorage.createAnalysis(req.userId, {
-        url,
-        summary: analysisResult.content,
-        model: analysisResult.model
-      });
+      try {
+        const analysis = await minimalStorage.createAnalysis(req.userId, {
+          url,
+          summary: analysisResult.content,
+          model: analysisResult.model
+        });
 
-      res.json(analysis);
+        res.json(analysis);
+      } catch (storageError) {
+        console.error("Storage error:", storageError);
+        throw new AppError("Failed to create business analysis", 500, 'INTERNAL');
+      }
     } catch (error) {
       console.error("Analysis creation failed:", error);
       next(error);
