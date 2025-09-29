@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Copy, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { StructuredAnalysis } from '@shared/schema';
 
 /**
@@ -17,6 +18,226 @@ interface StructuredReportProps {
 interface SectionProps {
   title: string;
   children: React.ReactNode;
+}
+
+/**
+ * Utility function to generate markdown from structured analysis data
+ * Formats all 5 sections with proper heading hierarchy and markdown syntax
+ */
+export function copyMarkdown(data: StructuredAnalysis, url: string): string {
+  let markdown = `# Business Analysis Report\n\n**URL:** ${url}\n\n`;
+
+  // Overview & Business Section
+  if (data.overview) {
+    markdown += `## Overview & Business\n\n`;
+    
+    if (data.overview.valueProposition) {
+      markdown += `### Value Proposition\n${data.overview.valueProposition}\n\n`;
+    }
+    
+    if (data.overview.targetAudience) {
+      markdown += `### Target Audience\n${data.overview.targetAudience}\n\n`;
+    }
+    
+    if (data.overview.monetization) {
+      markdown += `### Monetization\n${data.overview.monetization}\n\n`;
+    }
+  }
+
+  // Market & Competitors Section
+  if (data.market) {
+    markdown += `## Market & Competitors\n\n`;
+    
+    // Competitors
+    if (data.market.competitors && data.market.competitors.length > 0) {
+      markdown += `### Competitors\n\n`;
+      data.market.competitors.forEach(competitor => {
+        if (competitor.url) {
+          markdown += `- [${competitor.name}](${competitor.url})`;
+        } else {
+          markdown += `- ${competitor.name}`;
+        }
+        if (competitor.notes) {
+          markdown += ` - ${competitor.notes}`;
+        }
+        markdown += `\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // SWOT Analysis
+    if (data.market.swot) {
+      markdown += `### SWOT Analysis\n\n`;
+      
+      if (data.market.swot.strengths && data.market.swot.strengths.length > 0) {
+        markdown += `#### Strengths\n`;
+        data.market.swot.strengths.forEach(strength => {
+          markdown += `- ${strength}\n`;
+        });
+        markdown += `\n`;
+      }
+      
+      if (data.market.swot.weaknesses && data.market.swot.weaknesses.length > 0) {
+        markdown += `#### Weaknesses\n`;
+        data.market.swot.weaknesses.forEach(weakness => {
+          markdown += `- ${weakness}\n`;
+        });
+        markdown += `\n`;
+      }
+      
+      if (data.market.swot.opportunities && data.market.swot.opportunities.length > 0) {
+        markdown += `#### Opportunities\n`;
+        data.market.swot.opportunities.forEach(opportunity => {
+          markdown += `- ${opportunity}\n`;
+        });
+        markdown += `\n`;
+      }
+      
+      if (data.market.swot.threats && data.market.swot.threats.length > 0) {
+        markdown += `#### Threats\n`;
+        data.market.swot.threats.forEach(threat => {
+          markdown += `- ${threat}\n`;
+        });
+        markdown += `\n`;
+      }
+    }
+  }
+
+  // Technical & Website Section
+  if (data.technical) {
+    markdown += `## Technical & Website\n\n`;
+    
+    if (data.technical.techStack && data.technical.techStack.length > 0) {
+      markdown += `### Technology Stack\n`;
+      data.technical.techStack.forEach(tech => {
+        markdown += `- ${tech}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    if (data.technical.uiColors && data.technical.uiColors.length > 0) {
+      markdown += `### UI Colors\n`;
+      data.technical.uiColors.forEach(color => {
+        markdown += `- ${color}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    if (data.technical.keyPages && data.technical.keyPages.length > 0) {
+      markdown += `### Key Pages\n`;
+      data.technical.keyPages.forEach(page => {
+        markdown += `- ${page}\n`;
+      });
+      markdown += `\n`;
+    }
+  }
+
+  // Data & Analytics Section
+  if (data.data) {
+    markdown += `## Data & Analytics\n\n`;
+    
+    if (data.data.trafficEstimates) {
+      markdown += `### Traffic Estimates\n`;
+      markdown += `**Value:** ${data.data.trafficEstimates.value}\n`;
+      if (data.data.trafficEstimates.source) {
+        markdown += `**Source:** ${data.data.trafficEstimates.source}\n`;
+      }
+      markdown += `\n`;
+    }
+    
+    if (data.data.keyMetrics && data.data.keyMetrics.length > 0) {
+      markdown += `### Key Metrics\n\n`;
+      data.data.keyMetrics.forEach(metric => {
+        markdown += `**${metric.name}:** ${metric.value}`;
+        if (metric.source) {
+          markdown += ` (Source: ${metric.source})`;
+        }
+        markdown += `\n`;
+      });
+      markdown += `\n`;
+    }
+  }
+
+  // Synthesis & Key Takeaways Section
+  if (data.synthesis) {
+    markdown += `## Synthesis & Key Takeaways\n\n`;
+    
+    if (data.synthesis.summary) {
+      markdown += `### Executive Summary\n${data.synthesis.summary}\n\n`;
+    }
+    
+    if (data.synthesis.keyInsights && data.synthesis.keyInsights.length > 0) {
+      markdown += `### Key Insights\n`;
+      data.synthesis.keyInsights.forEach(insight => {
+        markdown += `- ${insight}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    if (data.synthesis.nextActions && data.synthesis.nextActions.length > 0) {
+      markdown += `### Next Actions\n`;
+      data.synthesis.nextActions.forEach(action => {
+        markdown += `- ${action}\n`;
+      });
+      markdown += `\n`;
+    }
+  }
+
+  return markdown;
+}
+
+/**
+ * Utility function to convert URL to safe filename
+ * Replaces non-alphanumeric characters with hyphens and converts to lowercase
+ */
+export function slugify(url: string): string {
+  return url
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric with hyphens
+    .replace(/-+/g, '-') // Replace multiple consecutive hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading and trailing hyphens
+}
+
+/**
+ * Utility function to download structured analysis data as JSON file
+ * Creates a blob and triggers automatic download with slugified filename
+ */
+export function downloadJson(data: StructuredAnalysis, url: string): void {
+  try {
+    // Create the complete analysis object to download
+    const analysisData = {
+      url,
+      analyzedAt: new Date().toISOString(),
+      structuredAnalysis: data
+    };
+
+    // Convert to JSON string with proper formatting
+    const jsonString = JSON.stringify(analysisData, null, 2);
+    
+    // Create blob with JSON data
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // Generate filename using slugified URL
+    const slugifiedUrl = slugify(url);
+    const filename = `analysis-${slugifiedUrl}.json`;
+    
+    // Create download link and trigger download
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the object URL
+    URL.revokeObjectURL(downloadUrl);
+  } catch (error) {
+    console.error('Failed to download JSON:', error);
+    // TODO: Add toast notification for error feedback
+  }
 }
 
 /**
@@ -63,9 +284,54 @@ export function StructuredReport({ data, url }: StructuredReportProps) {
     return null;
   }
 
+  /**
+   * Handle copying markdown to clipboard
+   * Uses the browser's clipboard API to copy formatted markdown
+   */
+  const handleCopyMarkdown = async () => {
+    try {
+      const markdown = copyMarkdown(data, url);
+      await navigator.clipboard.writeText(markdown);
+      // TODO: Add toast notification for success feedback
+    } catch (error) {
+      console.error('Failed to copy markdown:', error);
+      // TODO: Add toast notification for error feedback
+    }
+  };
+
+  /**
+   * Handle downloading JSON file
+   * Uses the downloadJson utility to generate and download the file
+   */
+  const handleDownloadJson = () => {
+    downloadJson(data, url);
+  };
+
   return (
     <Card>
       <CardContent className="p-6">
+        {/* Export Actions */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyMarkdown}
+            className="flex items-center gap-2"
+          >
+            <Copy className="h-4 w-4" />
+            Copy Markdown
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadJson}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download JSON
+          </Button>
+        </div>
+
         <div className="space-y-4">
           {/* Overview & Business Section */}
           {data.overview && (

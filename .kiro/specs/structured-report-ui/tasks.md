@@ -47,7 +47,12 @@
   - Include proper null checks for missing SWOT data
   - _Requirements: 1.1, 2.5_
 
-- [ ] 5. Implement Copy Markdown export functionality
+- [x] 5. Implement Copy Markdown export functionality
+
+
+
+
+
   - Create copyMarkdown utility function with proper markdown formatting
   - Add markdown generation for all 5 sections with proper heading hierarchy
   - Implement competitor URLs as markdown links where available
@@ -55,7 +60,12 @@
   - Integrate with browser clipboard API
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6. Implement Download JSON export functionality
+- [x] 6. Implement Download JSON export functionality
+
+
+
+
+
   - Create downloadJson utility function for file generation
   - Implement filename slugification with URL-to-safe-filename conversion
   - Add blob creation and automatic download trigger
