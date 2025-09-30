@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAnalyses, useAnalyzeUrl, useApiErrorHandling } from '@/hooks/use-minimal-api';
+import { StructuredReport } from '@/components/StructuredReport';
 import type { AnalysisRecord } from '@/types/minimal-api';
 
 /**
@@ -172,10 +173,14 @@ function AnalysisListItem({ analysis }: AnalysisListItemProps) {
             Analyzed with {analysis.model}
           </div>
 
-          {/* Summary */}
-          <div className="text-sm leading-relaxed">
-            {analysis.summary}
-          </div>
+          {/* Content - Structured Report or Plain Summary */}
+          {analysis.structured ? (
+            <StructuredReport data={analysis.structured} url={analysis.url} />
+          ) : (
+            <div className="text-sm leading-relaxed">
+              {analysis.summary}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

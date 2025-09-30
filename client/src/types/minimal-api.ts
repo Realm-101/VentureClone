@@ -1,4 +1,5 @@
 // Minimal API types for the streamlined venture analysis feature
+import type { StructuredAnalysis } from "@shared/schema";
 
 export interface AnalysisRecord {
   id: string;
@@ -7,6 +8,7 @@ export interface AnalysisRecord {
   summary: string;
   model: string;
   createdAt: string;
+  structured?: StructuredAnalysis;
 }
 
 export interface CreateAnalysisInput {
