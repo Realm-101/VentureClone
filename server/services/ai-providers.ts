@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type AIProvider = 'openai' | 'gemini' | 'grok';
 
@@ -14,7 +14,7 @@ export interface AIResponse {
 
 export class AIProviderService {
   private openaiClient: OpenAI | null = null;
-  private geminiClient: GoogleGenAI | null = null;
+  private geminiClient: GoogleGenerativeAI | null = null;
   private grokClient: OpenAI | null = null;
   private readonly timeoutMs: number;
 
@@ -38,10 +38,7 @@ export class AIProviderService {
         });
         break;
       case 'gemini':
-        this.geminiClient = new GoogleGenAI({ 
-          apiKey: this.apiKey,
-          // Note: GoogleGenAI client timeout configuration may differ
-        });
+        this.geminiClient = new GoogleGenerativeAI(this.apiKey);
         break;
       case 'grok':
         this.grokClient = new OpenAI({ 
@@ -163,17 +160,49 @@ export class AIProviderService {
   private async generateGeminiContent(prompt: string, systemPrompt?: string): Promise<AIResponse> {
     if (!this.geminiClient) throw new Error('Gemini client not initialized');
 
-    // Temporary fallback implementation - will be updated when proper API is configured
-    return {
-      content: "Gemini integration temporarily disabled. Please use OpenAI or Grok for now.",
-    };
+    try {
+      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      
+      const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+      
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      
+      return {
+        content: response.text() || '',
+        usage: {
+          prompt_tokens: 0, // Gemini doesn't provide token counts in the same way
+          completion_tokens: 0,
+          total_tokens: 0,
+        },
+      };
+    } catch (error) {
+      throw new Error(`Gemini API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async generateGeminiStructuredContent(prompt: string, schema: any, systemPrompt?: string): Promise<any> {
     if (!this.geminiClient) throw new Error('Gemini client not initialized');
 
-    // Temporary fallback implementation - will be updated when proper API is configured
-    throw new Error('Gemini integration temporarily disabled. Please use OpenAI or Grok for structured content generation.');
+    try {
+      const model = this.geminiClient.getGenerativeModel({ 
+        model: "gemini-2.0-flash-exp",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
+      });
+      
+      const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+      
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      
+      const content = response.text();
+      return content ? JSON.parse(content) : null;
+    } catch (error) {
+      throw new Error(`Gemini structured content error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async generateGrokContent(prompt: string, systemPrompt?: string): Promise<AIResponse> {

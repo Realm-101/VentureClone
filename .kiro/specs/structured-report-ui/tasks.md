@@ -133,7 +133,11 @@
   - Test section collapsible functionality
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [-] 12. Write unit tests for export functionality
+- [x] 12. Write unit tests for export functionality
+
+
+
+
 
 
 
