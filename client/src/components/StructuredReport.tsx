@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Copy, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { StructuredAnalysis } from '@shared/schema';
+import { ConfidenceBadge } from '@/components/ui/confidence-badge';
+import { SourceAttribution } from '@/components/ui/source-attribution';
+import type { StructuredAnalysis, EnhancedStructuredAnalysis } from '@shared/schema';
 
 /**
  * Props interface for the StructuredReport component
+ * Supports both original and enhanced structured analysis data
  */
 interface StructuredReportProps {
-  data: StructuredAnalysis;
+  data: StructuredAnalysis | EnhancedStructuredAnalysis;
   url: string;
 }
 
@@ -23,8 +26,9 @@ interface SectionProps {
 /**
  * Utility function to generate markdown from structured analysis data
  * Formats all 5 sections with proper heading hierarchy and markdown syntax
+ * Supports both original and enhanced structured analysis data
  */
-export function copyMarkdown(data: StructuredAnalysis, url: string): string {
+export function copyMarkdown(data: StructuredAnalysis | EnhancedStructuredAnalysis, url: string): string {
   let markdown = `# Business Analysis Report\n\n**URL:** ${url}\n\n`;
 
   // Overview & Business Section
@@ -201,8 +205,9 @@ export function slugify(url: string): string {
 /**
  * Utility function to download structured analysis data as JSON file
  * Creates a blob and triggers automatic download with slugified filename
+ * Supports both original and enhanced structured analysis data
  */
-export function downloadJson(data: StructuredAnalysis, url: string): void {
+export function downloadJson(data: StructuredAnalysis | EnhancedStructuredAnalysis, url: string): void {
   try {
     // Create the complete analysis object to download
     const analysisData = {
@@ -469,7 +474,10 @@ export function StructuredReport({ data, url }: StructuredReportProps) {
               <div className="space-y-3 mt-3">
                 {data.technical.techStack && data.technical.techStack.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Technology Stack</h4>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-sm text-muted-foreground">Technology Stack</h4>
+                      <ConfidenceBadge confidence={(data.technical as any).confidence} />
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {data.technical.techStack.map((tech, index) => (
                         <span
@@ -549,6 +557,11 @@ export function StructuredReport({ data, url }: StructuredReportProps) {
                       ))}
                     </div>
                   </div>
+                )}
+                
+                {/* Source Attribution for enhanced analysis */}
+                {(data as any).sources && (
+                  <SourceAttribution sources={(data as any).sources} className="mt-4" />
                 )}
               </div>
             </Section>

@@ -59,7 +59,12 @@
   - Add error handling for malformed confidence scores and invalid sources
   - _Requirements: 1.1, 1.3, 1.6, 4.2_
 
-- [-] 6. Create business improvement generation service
+- [x] 6. Create business improvement generation service
+
+
+
+
+
 
 
 
@@ -69,28 +74,46 @@
   - Add comprehensive error handling and timeout management (30 seconds)
   - _Requirements: 3.2, 3.3, 3.4, 5.3_
 
-- [ ] 7. Add business improvement API endpoint
+- [x] 7. Add business improvement API endpoint
+
+
+
+
+
   - Create POST /api/business-analyses/:id/improve endpoint in server/routes.ts
   - Implement analysis lookup and validation logic
   - Integrate business improvement service with proper error handling
   - Add request validation and response formatting
   - _Requirements: 3.1, 3.2, 5.4_
 
-- [ ] 8. Update storage layer for enhanced analysis data
+- [x] 8. Update storage layer for enhanced analysis data
+
+
+
+
+
   - Modify server/minimal-storage.ts interfaces to support enhanced analysis records
   - Update AnalysisRecord interface to include firstPartyData and improvements fields
   - Ensure backward compatibility with existing stored analysis data
   - Add methods for storing and retrieving improvement data
   - _Requirements: 4.1, 4.2, 5.5_
 
-- [ ] 9. Create UI components for confidence display
+- [x] 9. Create UI components for confidence display
+
+
+
+
+
   - Implement confidence badge component that shows "Speculative" when confidence < 0.6
   - Add source attribution display components for showing source URLs and excerpts
   - Integrate confidence badges into existing structured report UI
   - Ensure components handle missing confidence data gracefully
   - _Requirements: 1.2, 1.3, 4.4_
 
-- [ ] 10. Implement business improvement UI components
+- [-] 10. Implement business improvement UI components
+
+
+
   - Create improvement panel component for displaying 3 business twists
   - Implement 7-day plan display component with daily task organization
   - Add "Copy Plan" button functionality for clipboard export

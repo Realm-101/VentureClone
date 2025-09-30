@@ -19,6 +19,7 @@ export interface BusinessAnalysis {
   aiInsights?: AIInsights;
   currentStage: number;
   stageData?: any;
+  structured?: import('@shared/schema').StructuredAnalysis;
   createdAt: Date;
   updatedAt: Date;
 }

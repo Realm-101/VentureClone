@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
+import { type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData, type BusinessImprovement } from "@shared/schema";
 
 // Data types for minimal venture analysis
 export interface AnalysisRecord {
@@ -11,6 +11,7 @@ export interface AnalysisRecord {
   createdAt: string;
   structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
   firstPartyData?: FirstPartyData;
+  improvements?: BusinessImprovement;
 }
 
 export interface CreateAnalysisInput {
@@ -19,6 +20,7 @@ export interface CreateAnalysisInput {
   model: string;
   structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
   firstPartyData?: FirstPartyData;
+  improvements?: BusinessImprovement;
 }
 
 // Storage interface defining the contract for all storage implementations
@@ -27,6 +29,8 @@ export interface IStorage {
   getAnalysis(userId: string, id: string): Promise<AnalysisRecord | null>;
   createAnalysis(userId: string, record: CreateAnalysisInput): Promise<AnalysisRecord>;
   deleteAnalysis(userId: string, id: string): Promise<void>;
+  updateAnalysisImprovements(userId: string, id: string, improvements: BusinessImprovement): Promise<AnalysisRecord | null>;
+  getAnalysisImprovements(userId: string, id: string): Promise<BusinessImprovement | null>;
 }
 
 // In-memory storage implementation using Map for immediate deployment
@@ -56,6 +60,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date().toISOString(),
       structured: record.structured,
       firstPartyData: record.firstPartyData,
+      improvements: record.improvements,
     };
 
     const userAnalyses = this.analyses.get(userId) || [];
@@ -69,6 +74,30 @@ export class MemStorage implements IStorage {
     const userAnalyses = this.analyses.get(userId) || [];
     const filteredAnalyses = userAnalyses.filter(analysis => analysis.id !== id);
     this.analyses.set(userId, filteredAnalyses);
+  }
+
+  async updateAnalysisImprovements(userId: string, id: string, improvements: BusinessImprovement): Promise<AnalysisRecord | null> {
+    const userAnalyses = this.analyses.get(userId) || [];
+    const analysisIndex = userAnalyses.findIndex(analysis => analysis.id === id);
+    
+    if (analysisIndex === -1) {
+      return null;
+    }
+
+    // Update the analysis with improvements
+    const updatedAnalysis: AnalysisRecord = {
+      ...userAnalyses[analysisIndex],
+      improvements
+    };
+    
+    userAnalyses[analysisIndex] = updatedAnalysis;
+    this.analyses.set(userId, userAnalyses);
+    return updatedAnalysis;
+  }
+
+  async getAnalysisImprovements(userId: string, id: string): Promise<BusinessImprovement | null> {
+    const analysis = await this.getAnalysis(userId, id);
+    return analysis?.improvements || null;
   }
 }
 
@@ -87,6 +116,14 @@ export class DbStorage implements IStorage {
   }
 
   async deleteAnalysis(userId: string, id: string): Promise<void> {
+    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+  }
+
+  async updateAnalysisImprovements(userId: string, id: string, improvements: BusinessImprovement): Promise<AnalysisRecord | null> {
+    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+  }
+
+  async getAnalysisImprovements(userId: string, id: string): Promise<BusinessImprovement | null> {
     throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
   }
 }

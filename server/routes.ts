@@ -4,10 +4,11 @@ import { minimalStorage } from "./minimal-storage";
 import { rateLimit } from "./middleware/rateLimit";
 import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
-import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
+import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData, type BusinessImprovement } from "@shared/schema";
 import { AIProviderService, type AIProvider } from "./services/ai-providers";
 import { fetchFirstParty } from "./lib/fetchFirstParty";
 import { ValidationService } from "./lib/validation";
+import { BusinessImprovementService } from "./services/business-improvement";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -302,6 +303,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Analysis creation failed:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/improve - Generate business improvement suggestions
+  app.post("/api/business-analyses/:id/improve", rateLimit, async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/improve hit", { id: req.params.id, body: req.body });
+    try {
+      const { id } = req.params;
+      const { goal } = req.body;
+
+      // Validate analysis ID is provided
+      if (!id) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Validate goal parameter if provided
+      if (goal !== undefined && (typeof goal !== 'string' || goal.trim().length === 0)) {
+        throw new AppError("Goal must be a non-empty string if provided", 400, 'BAD_REQUEST');
+      }
+
+      // Retrieve the analysis record first (before checking API keys)
+      const analysis = await minimalStorage.getAnalysis(req.userId, id);
+      if (!analysis) {
+        throw new AppError("Analysis not found", 404, 'NOT_FOUND');
+      }
+
+      // Validate that the analysis has structured data
+      if (!analysis.structured) {
+        throw new AppError("Analysis does not have structured data required for improvement generation", 400, 'BAD_REQUEST');
+      }
+
+      // Check for at least one AI provider API key (after validating request)
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
+        throw new AppError("At least one AI provider API key (GEMINI_API_KEY, OPENAI_API_KEY, or GROK_API_KEY) is required", 500, 'CONFIG_MISSING');
+      }
+
+      // Ensure we have enhanced structured analysis for improvement generation
+      let enhancedAnalysis: EnhancedStructuredAnalysis;
+      try {
+        enhancedAnalysis = enhancedStructuredAnalysisSchema.parse(analysis.structured);
+      } catch (parseError) {
+        console.warn("Analysis structured data is not in enhanced format, attempting conversion:", parseError);
+        
+        // Try to convert original structured analysis to enhanced format
+        try {
+          const originalAnalysis = structuredAnalysisSchema.parse(analysis.structured);
+          enhancedAnalysis = {
+            ...originalAnalysis,
+            sources: [] // Add empty sources array for compatibility
+          };
+        } catch (conversionError) {
+          console.error("Failed to parse analysis structured data:", conversionError);
+          throw new AppError("Analysis structured data is invalid", 400, 'BAD_REQUEST');
+        }
+      }
+
+      // Create AI provider service for improvement generation
+      let aiProvider: AIProviderService;
+      try {
+        // Try Gemini first, then fallback to Grok
+        if (process.env.GEMINI_API_KEY) {
+          aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
+        } else if (process.env.GROK_API_KEY) {
+          aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
+        } else if (process.env.OPENAI_API_KEY) {
+          aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
+        } else {
+          throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
+        }
+      } catch (providerError) {
+        console.error("Failed to create AI provider service:", providerError);
+        throw new AppError("Failed to initialize AI provider", 500, 'INTERNAL');
+      }
+
+      // Create business improvement service
+      const improvementService = new BusinessImprovementService(aiProvider, {
+        timeoutMs: 30000 // 30 second timeout as per requirement 5.3
+      });
+
+      // Generate business improvement suggestions
+      let improvement: BusinessImprovement;
+      try {
+        improvement = await improvementService.generateImprovement(
+          enhancedAnalysis,
+          goal?.trim() || undefined
+        );
+      } catch (improvementError) {
+        console.error("Business improvement generation failed:", improvementError);
+        
+        // Handle specific error types
+        if (improvementError instanceof Error) {
+          if (improvementError.message.includes('timeout')) {
+            throw new AppError("Business improvement generation timed out. Please try again.", 504, 'GATEWAY_TIMEOUT');
+          }
+          if (improvementError.message.includes('validation')) {
+            throw new AppError("Generated improvement data is invalid. Please try again.", 502, 'AI_VALIDATION_ERROR');
+          }
+          if (improvementError.message.includes('AI generation')) {
+            throw new AppError("AI provider failed to generate improvements. Please try again.", 502, 'AI_PROVIDER_DOWN');
+          }
+        }
+        
+        throw new AppError("Failed to generate business improvements", 500, 'INTERNAL');
+      }
+
+      // Store the improvement data in the analysis record
+      const updatedAnalysis = await minimalStorage.updateAnalysisImprovements(req.userId, id, improvement);
+      
+      if (!updatedAnalysis) {
+        console.error("Failed to store improvement data for analysis:", id);
+        // Still return the improvement even if storage fails
+      }
+
+      // Return the improvement suggestions
+      res.json({
+        analysisId: id,
+        improvement,
+        generatedAt: improvement.generatedAt
+      });
+
+    } catch (error) {
+      console.error("Business improvement generation failed:", error);
       next(error);
     }
   });

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { AIService } from "@/lib/ai-service";
 import { ExportAnalysis } from "@/components/export-analysis";
+import { EnhancedAnalysisDisplay } from "@/components/enhanced-analysis-display";
 import type { BusinessAnalysis, WorkflowStage } from "@/types";
 
 interface WorkflowTabsProps {
@@ -231,6 +232,13 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
             </div>
           </div>
         </div>
+
+        {/* Enhanced Analysis Display with Improvement Functionality */}
+        {analysis.structured && (
+          <div className="mt-6">
+            <EnhancedAnalysisDisplay analysis={analysis} />
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center pt-4 border-t border-vc-border">
