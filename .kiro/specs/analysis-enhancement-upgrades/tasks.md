@@ -35,14 +35,22 @@
   - Ensure prompts enforce "unknown" responses when evidence is lacking
   - _Requirements: 1.2, 1.4, 1.5, 2.5_
 
-- [ ] 4. Integrate first-party data extraction into analysis flow
+- [x] 4. Integrate first-party data extraction into analysis flow
+
+
+
+
+
   - Modify server/routes.ts analyze endpoint to call fetchFirstParty before AI analysis
   - Update analyzeUrlWithAI function to include first-party context in AI prompts
   - Implement graceful fallback when first-party extraction fails
   - Store first-party data alongside analysis results
   - _Requirements: 2.1, 2.4, 2.6, 4.3_
 
-- [ ] 5. Implement confidence scoring and source validation
+- [-] 5. Implement confidence scoring and source validation
+
+
+
   - Add confidence score validation (0-1 range) in AI response processing
   - Implement source URL and excerpt validation in schema parsing
   - Create logic to automatically add target site as first-party source

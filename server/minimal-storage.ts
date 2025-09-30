@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { type StructuredAnalysis } from "@shared/schema";
+import { type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
 
 // Data types for minimal venture analysis
 export interface AnalysisRecord {
@@ -9,14 +9,16 @@ export interface AnalysisRecord {
   summary: string;
   model: string;
   createdAt: string;
-  structured?: StructuredAnalysis;
+  structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
+  firstPartyData?: FirstPartyData;
 }
 
 export interface CreateAnalysisInput {
   url: string;
   summary: string;
   model: string;
-  structured?: StructuredAnalysis;
+  structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
+  firstPartyData?: FirstPartyData;
 }
 
 // Storage interface defining the contract for all storage implementations
@@ -53,6 +55,7 @@ export class MemStorage implements IStorage {
       model: record.model,
       createdAt: new Date().toISOString(),
       structured: record.structured,
+      firstPartyData: record.firstPartyData,
     };
 
     const userAnalyses = this.analyses.get(userId) || [];

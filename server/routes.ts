@@ -2,11 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { minimalStorage } from "./minimal-storage";
 import { rateLimit } from "./middleware/rateLimit";
-import { fetchWithTimeout } from "./lib/fetchWithTimeout";
 import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
-import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis } from "@shared/schema";
+import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
 import { AIProviderService, type AIProvider } from "./services/ai-providers";
+import { fetchFirstParty } from "./lib/fetchFirstParty";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -18,34 +18,10 @@ function isValidUrl(string: string): boolean {
   }
 }
 
-// Helper function to parse structured analysis with enhanced schema support and graceful fallback
-function parseStructuredAnalysis(content: string): { structured?: StructuredAnalysis | EnhancedStructuredAnalysis; summary: string } {
-  try {
-    // Try to parse as JSON first
-    const parsed = JSON.parse(content);
-    
-    // Try enhanced schema first, fall back to original schema
-    let validated: StructuredAnalysis | EnhancedStructuredAnalysis;
-    try {
-      validated = enhancedStructuredAnalysisSchema.parse(parsed);
-    } catch (enhancedError) {
-      console.warn("Enhanced schema validation failed, trying original schema:", enhancedError);
-      validated = structuredAnalysisSchema.parse(parsed);
-    }
-    
-    // Generate summary from structured data
-    const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
-    
-    return { structured: validated, summary };
-  } catch (error) {
-    // Graceful fallback to plain text
-    console.warn("Failed to parse structured analysis, falling back to plain text:", error);
-    return { summary: content };
-  }
-}
+
 
 // Enhanced AI provider integration for evidence-based business analysis
-async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPartyData?: any): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
+async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
   const apiKey = provider === 'gemini' ? process.env.GEMINI_API_KEY : 
                  provider === 'openai' ? process.env.OPENAI_API_KEY :
                  process.env.GROK_API_KEY;
@@ -187,7 +163,7 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
 
 
 // Multi-provider analysis with enhanced evidence-based prompts
-async function analyzeUrlWithAI(url: string, firstPartyData?: any): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
+async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
   // Try Gemini first
   try {
     console.log("Attempting enhanced analysis with Gemini...");
@@ -263,16 +239,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new AppError("At least one AI provider API key (GEMINI_API_KEY, OPENAI_API_KEY, or GROK_API_KEY) is required", 500, 'CONFIG_MISSING');
       }
 
-      // Perform AI analysis with multi-provider support
-      const analysisResult = await analyzeUrlWithAI(url);
+      // Extract first-party data from target website
+      let firstPartyData: FirstPartyData | null = null;
+      try {
+        console.log("Attempting to fetch first-party data from:", url);
+        firstPartyData = await fetchFirstParty(url);
+        if (firstPartyData) {
+          console.log("Successfully extracted first-party data:", {
+            title: firstPartyData.title,
+            hasDescription: !!firstPartyData.description,
+            hasH1: !!firstPartyData.h1,
+            textSnippetLength: firstPartyData.textSnippet.length
+          });
+        } else {
+          console.log("First-party data extraction returned null - site may be unreachable or blocked");
+        }
+      } catch (firstPartyError) {
+        console.warn("First-party data extraction failed, continuing with AI-only analysis:", firstPartyError);
+        // Continue with analysis even if first-party extraction fails
+      }
 
-      // Save analysis to storage with structured data
+      // Perform AI analysis with multi-provider support, including first-party context
+      const analysisResult = await analyzeUrlWithAI(url, firstPartyData || undefined);
+
+      // Save analysis to storage with structured data and first-party data
       try {
         const analysis = await minimalStorage.createAnalysis(req.userId, {
           url,
           summary: analysisResult.content,
           model: analysisResult.model,
-          structured: analysisResult.structured
+          structured: analysisResult.structured,
+          firstPartyData: firstPartyData || undefined
         });
 
         res.json(analysis);
