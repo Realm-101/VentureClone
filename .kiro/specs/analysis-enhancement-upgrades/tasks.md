@@ -47,7 +47,9 @@
   - Store first-party data alongside analysis results
   - _Requirements: 2.1, 2.4, 2.6, 4.3_
 
-- [-] 5. Implement confidence scoring and source validation
+- [x] 5. Implement confidence scoring and source validation
+
+
 
 
 
@@ -57,7 +59,10 @@
   - Add error handling for malformed confidence scores and invalid sources
   - _Requirements: 1.1, 1.3, 1.6, 4.2_
 
-- [ ] 6. Create business improvement generation service
+- [-] 6. Create business improvement generation service
+
+
+
   - Implement server/services/business-improvement.ts with improvement generation logic
   - Create AI prompts for generating 3 business improvement angles
   - Implement 7-day plan generation with daily task limits (max 3 per day)

@@ -7,6 +7,7 @@ import { healthzHandler } from "./routes/healthz";
 import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
 import { AIProviderService, type AIProvider } from "./services/ai-providers";
 import { fetchFirstParty } from "./lib/fetchFirstParty";
+import { ValidationService } from "./lib/validation";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -137,13 +138,24 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
   try {
     const result = await aiService.generateStructuredContent(structuredPrompt, schema, systemPrompt);
     
-    // Try to validate against enhanced schema first, fall back to original schema for backward compatibility
+    // Validate and sanitize the AI response with confidence scoring and source validation
     let validated: StructuredAnalysis | EnhancedStructuredAnalysis;
     try {
-      validated = enhancedStructuredAnalysisSchema.parse(result);
+      // First attempt enhanced validation with confidence scoring and source attribution
+      validated = ValidationService.validateEnhancedAnalysis(result, url, firstPartyData);
+      
+      // Parse with enhanced schema to ensure all fields are properly typed
+      validated = enhancedStructuredAnalysisSchema.parse(validated);
     } catch (enhancedError) {
-      console.warn("Enhanced schema validation failed, falling back to original schema:", enhancedError);
-      validated = structuredAnalysisSchema.parse(result);
+      console.warn("Enhanced validation failed, falling back to original schema:", enhancedError);
+      
+      // Fallback to original schema for backward compatibility
+      try {
+        validated = structuredAnalysisSchema.parse(result);
+      } catch (originalError) {
+        console.error("Both enhanced and original schema validation failed:", { enhancedError, originalError });
+        throw new Error(`Analysis validation failed: ${originalError instanceof Error ? originalError.message : 'Unknown error'}`);
+      }
     }
     
     // Generate summary from structured data
@@ -156,6 +168,17 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
     return { content: summary, model: modelName, structured: validated };
   } catch (error) {
     console.error(`${provider} structured analysis failed:`, error);
+    
+    // Enhanced error handling for validation failures
+    if (error instanceof Error) {
+      if (error.message.includes('Confidence score')) {
+        throw new AppError(`Invalid confidence score in AI response: ${error.message}`, 502, 'AI_VALIDATION_ERROR');
+      }
+      if (error.message.includes('source') || error.message.includes('Source')) {
+        throw new AppError(`Invalid source attribution in AI response: ${error.message}`, 502, 'AI_VALIDATION_ERROR');
+      }
+    }
+    
     throw new AppError(`${provider} analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 502, 'AI_PROVIDER_DOWN');
   }
 }
