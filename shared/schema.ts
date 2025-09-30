@@ -3,7 +3,34 @@ import { pgTable, text, varchar, jsonb, timestamp, integer, boolean } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Structured Analysis Schema for enhanced business analysis output
+// Source attribution schema for evidence-based analysis
+export const zSource = z.object({
+  url: z.string().url(),
+  excerpt: z.string().min(10).max(300)
+});
+
+export type Source = z.infer<typeof zSource>;
+
+// First-party data interface for website content extraction
+export interface FirstPartyData {
+  title: string;
+  description: string;
+  h1: string;
+  textSnippet: string;
+  url: string;
+}
+
+// Business improvement interface for actionable suggestions
+export interface BusinessImprovement {
+  twists: string[];
+  sevenDayPlan: {
+    day: number;
+    tasks: string[];
+  }[];
+  generatedAt: string;
+}
+
+// Original structured analysis schema (maintained for backward compatibility)
 export const structuredAnalysisSchema = z.object({
   overview: z.object({
     valueProposition: z.string(),
@@ -46,7 +73,57 @@ export const structuredAnalysisSchema = z.object({
   }),
 });
 
+// Enhanced structured analysis schema with confidence scoring and source attribution
+export const enhancedStructuredAnalysisSchema = z.object({
+  overview: z.object({
+    valueProposition: z.string(),
+    targetAudience: z.string(),
+    monetization: z.string(),
+  }),
+  market: z.object({
+    competitors: z.array(z.object({
+      name: z.string(),
+      url: z.string().optional(),
+      notes: z.string().optional(),
+    })),
+    swot: z.object({
+      strengths: z.array(z.string()),
+      weaknesses: z.array(z.string()),
+      opportunities: z.array(z.string()),
+      threats: z.array(z.string()),
+    }),
+  }),
+  // Enhanced technical section with confidence scoring
+  technical: z.object({
+    techStack: z.array(z.string()).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    uiColors: z.array(z.string()).optional(),
+    keyPages: z.array(z.string()).optional(),
+  }).optional(),
+  // Enhanced data section with source attribution
+  data: z.object({
+    trafficEstimates: z.object({
+      value: z.string(),
+      source: z.string().url().optional(),
+    }).optional(),
+    keyMetrics: z.array(z.object({
+      name: z.string(),
+      value: z.string(),
+      source: z.string().url().optional(),
+      asOf: z.string().optional()
+    })).optional(),
+  }).optional(),
+  synthesis: z.object({
+    summary: z.string(),
+    keyInsights: z.array(z.string()),
+    nextActions: z.array(z.string()),
+  }),
+  // New sources section for evidence attribution
+  sources: z.array(zSource).default([])
+});
+
 export type StructuredAnalysis = z.infer<typeof structuredAnalysisSchema>;
+export type EnhancedStructuredAnalysis = z.infer<typeof enhancedStructuredAnalysisSchema>;
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -133,3 +210,15 @@ export type BusinessAnalysis = typeof businessAnalyses.$inferSelect;
 export type InsertBusinessAnalysis = z.infer<typeof insertBusinessAnalysisSchema>;
 export type WorkflowStage = typeof workflowStages.$inferSelect;
 export type InsertWorkflowStage = z.infer<typeof insertWorkflowStageSchema>;
+
+// Enhanced analysis record interface that extends the base BusinessAnalysis
+export interface EnhancedAnalysisRecord extends BusinessAnalysis {
+  structured?: EnhancedStructuredAnalysis;
+  firstPartyData?: FirstPartyData;
+  improvements?: BusinessImprovement;
+}
+
+// Analysis record interface for backward compatibility
+export interface AnalysisRecord extends BusinessAnalysis {
+  structured?: StructuredAnalysis;
+}
