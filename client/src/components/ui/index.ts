@@ -5,6 +5,7 @@ export { Badge, badgeVariants } from './badge';
 export { Button, buttonVariants, type ButtonProps } from './button';
 export { ConfidenceBadge } from './confidence-badge';
 export { SourceAttribution } from './source-attribution';
+export { ImprovementPanel } from './improvement-panel';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
 export { Checkbox } from './checkbox';
 export { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';

@@ -108,13 +108,9 @@ describe('ImprovementPanel', () => {
   it('displays correct number of tasks for each day', () => {
     render(<ImprovementPanel improvement={mockImprovement} />);
     
-    // Day 1 should have 3 tasks
-    const day1Section = screen.getByText('Day 1').closest('div');
-    expect(day1Section).toHaveTextContent('3 tasks');
-    
-    // Day 2 should have 2 tasks
-    const day2Section = screen.getByText('Day 2').closest('div');
-    expect(day2Section).toHaveTextContent('2 tasks');
+    // Check that task counts are displayed (using getAllByText since there might be multiple)
+    expect(screen.getAllByText('3 tasks')).toHaveLength(4); // Days 1, 3, 5, 7 have 3 tasks
+    expect(screen.getAllByText('2 tasks')).toHaveLength(3); // Days 2, 4, 6 have 2 tasks
   });
 
   it('displays task count correctly for single task', () => {
@@ -130,8 +126,7 @@ describe('ImprovementPanel', () => {
     
     render(<ImprovementPanel improvement={singleTaskImprovement} />);
     
-    const day1Section = screen.getByText('Day 1').closest('div');
-    expect(day1Section).toHaveTextContent('1 task');
+    expect(screen.getByText('1 task')).toBeInTheDocument();
   });
 
   it('copies plan to clipboard when copy button is clicked', async () => {
