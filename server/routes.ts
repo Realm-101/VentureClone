@@ -6,7 +6,7 @@ import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
 import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData, type BusinessImprovement } from "@shared/schema";
 import { AIProviderService, type AIProvider } from "./services/ai-providers";
-import { fetchFirstParty } from "./lib/fetchFirstParty";
+import { fetchFirstParty, fetchFirstPartyWithRetry } from "./lib/fetchFirstParty";
 import { ValidationService } from "./lib/validation";
 import { BusinessImprovementService } from "./services/business-improvement";
 
@@ -21,6 +21,11 @@ function isValidUrl(string: string): boolean {
 }
 
 
+
+// Performance optimization: Request queue for concurrent handling
+const analysisQueue = new Map<string, Promise<any>>();
+const MAX_CONCURRENT_ANALYSES = 5;
+let activeAnalyses = 0;
 
 // Enhanced AI provider integration for evidence-based business analysis
 async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
@@ -186,40 +191,75 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
 
 
 
-// Multi-provider analysis with enhanced evidence-based prompts
-async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
-  // Try Gemini first
-  try {
-    console.log("Attempting enhanced analysis with Gemini...");
-    return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
-  } catch (geminiError) {
-    console.warn("Gemini analysis failed, falling back to Grok:", geminiError);
-    
-    // If Gemini failed due to timeout, don't try Grok
-    if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
-      throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
-    }
-    
-    // Fallback to Grok
+// Performance optimization: Concurrent request management
+async function manageConcurrentAnalysis<T>(
+  key: string, 
+  analysisFunction: () => Promise<T>
+): Promise<T> {
+  // Check if this analysis is already in progress
+  if (analysisQueue.has(key)) {
+    console.log(`Reusing existing analysis for ${key}`);
+    return analysisQueue.get(key)!;
+  }
+
+  // Check concurrent limit
+  if (activeAnalyses >= MAX_CONCURRENT_ANALYSES) {
+    throw new AppError("System is currently processing maximum concurrent analyses. Please try again in a moment.", 429, 'RATE_LIMITED');
+  }
+
+  // Create and track the analysis promise
+  const analysisPromise = (async () => {
+    activeAnalyses++;
     try {
-      console.log("Attempting enhanced analysis with Grok...");
-      return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
-    } catch (grokError) {
-      console.error("Both Gemini and Grok failed:", { geminiError, grokError });
+      return await analysisFunction();
+    } finally {
+      activeAnalyses--;
+      analysisQueue.delete(key);
+    }
+  })();
+
+  analysisQueue.set(key, analysisPromise);
+  return analysisPromise;
+}
+
+// Multi-provider analysis with enhanced evidence-based prompts and concurrency management
+async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
+  const analysisKey = `${url}-${firstPartyData ? 'with-fp' : 'no-fp'}`;
+  
+  return manageConcurrentAnalysis(analysisKey, async () => {
+    // Try Gemini first
+    try {
+      console.log("Attempting enhanced analysis with Gemini...");
+      return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
+    } catch (geminiError) {
+      console.warn("Gemini analysis failed, falling back to Grok:", geminiError);
       
-      // Handle timeout errors specifically
-      if (grokError instanceof Error && grokError.message.includes('timeout')) {
+      // If Gemini failed due to timeout, don't try Grok
+      if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
         throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
       }
       
-      // If both providers failed with non-timeout errors, return 502
-      if (geminiError instanceof AppError || grokError instanceof AppError) {
+      // Fallback to Grok
+      try {
+        console.log("Attempting enhanced analysis with Grok...");
+        return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
+      } catch (grokError) {
+        console.error("Both Gemini and Grok failed:", { geminiError, grokError });
+        
+        // Handle timeout errors specifically
+        if (grokError instanceof Error && grokError.message.includes('timeout')) {
+          throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
+        }
+        
+        // If both providers failed with non-timeout errors, return 502
+        if (geminiError instanceof AppError || grokError instanceof AppError) {
+          throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
+        }
+        
         throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
       }
-      
-      throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
     }
-  }
+  });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -244,44 +284,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/business-analyses/analyze", rateLimit, async (req, res, next) => {
     console.log("=== NEW MINIMAL ROUTE HIT ===", req.body);
     try {
-      const { url } = req.body;
-
-      // Validate URL is provided
-      if (!url) {
-        console.log("URL missing");
-        throw new AppError("URL is required", 400, 'BAD_REQUEST');
+      // Enhanced input validation
+      let validatedInput: { url: string; goal?: string };
+      try {
+        validatedInput = ValidationService.validateAnalysisRequest(req.body);
+      } catch (validationError) {
+        console.log("Analysis request validation failed:", validationError);
+        throw AppError.validation(
+          validationError instanceof Error ? validationError.message : 'Invalid request data',
+          validationError instanceof Error ? validationError.message : 'Invalid request data'
+        );
       }
 
-      // Validate URL format
-      if (!isValidUrl(url)) {
-        console.log("Invalid URL format:", url);
-        throw new AppError("Invalid URL format", 400, 'BAD_REQUEST');
-      }
+      const { url } = validatedInput;
 
       // Check for at least one AI provider API key
       if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
-        throw new AppError("At least one AI provider API key (GEMINI_API_KEY, OPENAI_API_KEY, or GROK_API_KEY) is required", 500, 'CONFIG_MISSING');
+        throw new AppError(
+          "At least one AI provider API key is required", 
+          500, 
+          'CONFIG_MISSING',
+          'AI service is not configured. Please contact support.',
+          undefined,
+          { missingKeys: ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'GROK_API_KEY'] }
+        );
       }
 
-      // Extract first-party data from target website
+      // Performance optimization: Parallel first-party data extraction
       let firstPartyData: FirstPartyData | null = null;
-      try {
-        console.log("Attempting to fetch first-party data from:", url);
-        firstPartyData = await fetchFirstParty(url);
-        if (firstPartyData) {
-          console.log("Successfully extracted first-party data:", {
-            title: firstPartyData.title,
-            hasDescription: !!firstPartyData.description,
-            hasH1: !!firstPartyData.h1,
-            textSnippetLength: firstPartyData.textSnippet.length
+      const firstPartyPromise = (async () => {
+        try {
+          console.log("Attempting to fetch first-party data from:", url);
+          
+          // Performance optimization: Use faster extraction with reduced timeout
+          const extractionResult = await fetchFirstPartyWithRetry(url, {
+            timeoutMs: 8000, // Reduced from 10s to 8s for better performance
+            validateFirst: false,
+            retryCount: 0, // No retries for better performance
+            retryDelayMs: 0
           });
-        } else {
-          console.log("First-party data extraction returned null - site may be unreachable or blocked");
+
+          if (extractionResult.success && extractionResult.data) {
+            firstPartyData = extractionResult.data;
+            console.log("Successfully extracted first-party data:", {
+              title: firstPartyData.title,
+              hasDescription: !!firstPartyData.description,
+              hasH1: !!firstPartyData.h1,
+              textSnippetLength: firstPartyData.textSnippet.length,
+              elapsedMs: extractionResult.metadata.elapsedMs,
+              attempts: extractionResult.metadata.attempts
+            });
+            return firstPartyData;
+          } else {
+            console.log("First-party data extraction failed:", {
+              error: extractionResult.error,
+              metadata: extractionResult.metadata
+            });
+            
+            // Log specific error types for monitoring
+            if (extractionResult.error?.type === 'TIMEOUT') {
+              console.warn(`First-party extraction timeout for ${url}: ${extractionResult.error.message}`);
+            } else if (extractionResult.error?.type === 'NETWORK') {
+              console.warn(`First-party extraction network error for ${url}: ${extractionResult.error.message}`);
+            }
+            return null;
+          }
+        } catch (firstPartyError) {
+          console.warn("First-party data extraction failed with exception:", firstPartyError);
+          return null;
         }
-      } catch (firstPartyError) {
-        console.warn("First-party data extraction failed, continuing with AI-only analysis:", firstPartyError);
-        // Continue with analysis even if first-party extraction fails
-      }
+      })();
+
+      // Performance optimization: Don't wait for first-party data if it takes too long
+      const firstPartyTimeout = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.log("First-party extraction taking too long, proceeding without it");
+          resolve(null);
+        }, 6000); // 6 second timeout for first-party data
+      });
+
+      firstPartyData = await Promise.race([firstPartyPromise, firstPartyTimeout]);
 
       // Perform AI analysis with multi-provider support, including first-party context
       const analysisResult = await analyzeUrlWithAI(url, firstPartyData || undefined);
@@ -311,33 +393,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/business-analyses/:id/improve", rateLimit, async (req, res, next) => {
     console.log("POST /api/business-analyses/:id/improve hit", { id: req.params.id, body: req.body });
     try {
-      const { id } = req.params;
-      const { goal } = req.body;
-
-      // Validate analysis ID is provided
-      if (!id) {
-        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      // Enhanced input validation
+      let validatedId: string;
+      let validatedInput: { goal?: string };
+      
+      try {
+        validatedId = ValidationService.validateAnalysisId(req.params.id);
+        validatedInput = ValidationService.validateImprovementRequest(req.body);
+      } catch (validationError) {
+        console.log("Improvement request validation failed:", validationError);
+        throw AppError.validation(
+          validationError instanceof Error ? validationError.message : 'Invalid request data',
+          validationError instanceof Error ? validationError.message : 'Invalid request data'
+        );
       }
 
-      // Validate goal parameter if provided
-      if (goal !== undefined && (typeof goal !== 'string' || goal.trim().length === 0)) {
-        throw new AppError("Goal must be a non-empty string if provided", 400, 'BAD_REQUEST');
-      }
+      const { goal } = validatedInput;
 
       // Retrieve the analysis record first (before checking API keys)
-      const analysis = await minimalStorage.getAnalysis(req.userId, id);
+      const analysis = await minimalStorage.getAnalysis(req.userId, validatedId);
       if (!analysis) {
-        throw new AppError("Analysis not found", 404, 'NOT_FOUND');
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found. It may have been deleted or you may not have permission to access it.'
+        );
       }
 
       // Validate that the analysis has structured data
       if (!analysis.structured) {
-        throw new AppError("Analysis does not have structured data required for improvement generation", 400, 'BAD_REQUEST');
+        throw new AppError(
+          "Analysis does not have structured data required for improvement generation", 
+          400, 
+          'BAD_REQUEST',
+          'This analysis does not contain the structured data needed to generate improvements. Please run a new analysis.'
+        );
       }
 
       // Check for at least one AI provider API key (after validating request)
       if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
-        throw new AppError("At least one AI provider API key (GEMINI_API_KEY, OPENAI_API_KEY, or GROK_API_KEY) is required", 500, 'CONFIG_MISSING');
+        throw new AppError(
+          "At least one AI provider API key is required", 
+          500, 
+          'CONFIG_MISSING',
+          'AI service is not configured. Please contact support.',
+          undefined,
+          { missingKeys: ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'GROK_API_KEY'] }
+        );
       }
 
       // Ensure we have enhanced structured analysis for improvement generation
@@ -383,43 +486,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timeoutMs: 30000 // 30 second timeout as per requirement 5.3
       });
 
-      // Generate business improvement suggestions
+      // Generate business improvement suggestions with comprehensive error handling
       let improvement: BusinessImprovement;
       try {
         improvement = await improvementService.generateImprovement(
           enhancedAnalysis,
-          goal?.trim() || undefined
+          goal || undefined
         );
       } catch (improvementError) {
         console.error("Business improvement generation failed:", improvementError);
         
-        // Handle specific error types
+        // Handle specific error types with user-friendly messages
         if (improvementError instanceof Error) {
           if (improvementError.message.includes('timeout')) {
-            throw new AppError("Business improvement generation timed out. Please try again.", 504, 'GATEWAY_TIMEOUT');
+            throw AppError.timeout(
+              improvementError.message,
+              'Business improvement generation timed out. Please try again.',
+              { analysisId: validatedId, goal }
+            );
           }
           if (improvementError.message.includes('validation')) {
-            throw new AppError("Generated improvement data is invalid. Please try again.", 502, 'AI_VALIDATION_ERROR');
+            throw AppError.validation(
+              improvementError.message,
+              'The generated improvement data is invalid. Please try again.',
+              { analysisId: validatedId, goal }
+            );
           }
           if (improvementError.message.includes('AI generation')) {
-            throw new AppError("AI provider failed to generate improvements. Please try again.", 502, 'AI_PROVIDER_DOWN');
+            throw AppError.aiProvider(
+              improvementError.message,
+              'AI service failed to generate improvements. Please try again.',
+              { analysisId: validatedId, goal }
+            );
+          }
+          if (improvementError.message.includes('network') || improvementError.message.includes('fetch')) {
+            throw AppError.aiProvider(
+              improvementError.message,
+              'Network error while generating improvements. Please check your connection and try again.',
+              { analysisId: validatedId, goal }
+            );
+          }
+          if (improvementError.message.includes('rate limit')) {
+            throw new AppError(
+              improvementError.message,
+              429,
+              'RATE_LIMITED',
+              'AI service rate limit exceeded. Please wait a few minutes before trying again.',
+              undefined,
+              { analysisId: validatedId, goal },
+              true
+            );
           }
         }
         
-        throw new AppError("Failed to generate business improvements", 500, 'INTERNAL');
+        throw AppError.improvementGeneration(
+          improvementError instanceof Error ? improvementError.message : 'Unknown error',
+          'Failed to generate business improvements. Please try again.',
+          { analysisId: validatedId, goal }
+        );
       }
 
-      // Store the improvement data in the analysis record
-      const updatedAnalysis = await minimalStorage.updateAnalysisImprovements(req.userId, id, improvement);
-      
-      if (!updatedAnalysis) {
-        console.error("Failed to store improvement data for analysis:", id);
-        // Still return the improvement even if storage fails
+      // Store the improvement data in the analysis record with error handling
+      try {
+        const updatedAnalysis = await minimalStorage.updateAnalysisImprovements(req.userId, validatedId, improvement);
+        
+        if (!updatedAnalysis) {
+          console.warn("Failed to store improvement data for analysis:", validatedId);
+          // Still return the improvement even if storage fails
+        }
+      } catch (storageError) {
+        console.error("Storage error while saving improvements:", storageError);
+        // Continue and return the improvement even if storage fails
       }
 
       // Return the improvement suggestions
       res.json({
-        analysisId: id,
+        analysisId: validatedId,
         improvement,
         generatedAt: improvement.generatedAt
       });

@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAnalyses, useAnalyzeUrl, useApiErrorHandling } from '@/hooks/use-minimal-api';
 import { StructuredReport } from '@/components/StructuredReport';
+import { EnhancedAnalysisDisplay } from '@/components/enhanced-analysis-display';
 import type { AnalysisRecord } from '@/types/minimal-api';
+import type { EnhancedAnalysisRecord } from '@shared/schema';
 
 /**
  * URL Input Form Component
@@ -173,9 +175,12 @@ function AnalysisListItem({ analysis }: AnalysisListItemProps) {
             Analyzed with {analysis.model}
           </div>
 
-          {/* Content - Structured Report or Plain Summary */}
+          {/* Content - Enhanced Analysis Display or Plain Summary */}
           {analysis.structured ? (
-            <StructuredReport data={analysis.structured} url={analysis.url} />
+            <EnhancedAnalysisDisplay 
+              analysis={analysis as any} 
+              className="mt-4"
+            />
           ) : (
             <div className="text-sm leading-relaxed">
               {analysis.summary}

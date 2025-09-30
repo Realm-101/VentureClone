@@ -24,11 +24,22 @@ export class BusinessImprovementService {
     analysis: EnhancedStructuredAnalysis,
     goal?: string
   ): Promise<BusinessImprovement> {
+    const startTime = Date.now();
+    
     try {
+      // Validate input analysis
+      this.validateInputAnalysis(analysis);
+      
+      // Validate goal parameter if provided
+      if (goal !== undefined) {
+        this.validateGoal(goal);
+      }
+
       // Create timeout promise for 30-second limit (requirement 5.3)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error(`Business improvement generation timeout after ${this.timeoutMs}ms`));
+          const elapsed = Date.now() - startTime;
+          reject(new Error(`Business improvement generation timeout after ${elapsed}ms (limit: ${this.timeoutMs}ms)`));
         }, this.timeoutMs);
       });
 
@@ -41,23 +52,101 @@ export class BusinessImprovementService {
       // Validate the generated improvement
       this.validateImprovement(result);
 
+      const elapsed = Date.now() - startTime;
+      console.log(`Business improvement generation completed in ${elapsed}ms`);
+
       return {
         ...result,
         generatedAt: new Date().toISOString()
       };
 
     } catch (error) {
+      const elapsed = Date.now() - startTime;
+      console.error(`Business improvement generation failed after ${elapsed}ms:`, error);
+      
       // Comprehensive error handling (requirement 5.3)
       if (error instanceof Error) {
         if (error.message.includes('timeout')) {
-          throw new Error(`Business improvement generation failed: Request timeout after ${this.timeoutMs}ms`);
+          throw new Error(`Business improvement generation failed: Request timeout after ${elapsed}ms (limit: ${this.timeoutMs}ms)`);
         }
         if (error.message.includes('validation')) {
           throw new Error(`Business improvement generation failed: ${error.message}`);
         }
+        if (error.message.includes('AI generation')) {
+          throw new Error(`Business improvement generation failed: AI service error - ${error.message}`);
+        }
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          throw new Error(`Business improvement generation failed: Network error - ${error.message}`);
+        }
         throw new Error(`Business improvement generation failed: ${error.message}`);
       }
       throw new Error('Business improvement generation failed: Unknown error');
+    }
+  }
+
+  /**
+   * Validates input analysis for improvement generation
+   */
+  private validateInputAnalysis(analysis: EnhancedStructuredAnalysis): void {
+    if (!analysis) {
+      throw new Error('validation failed: analysis is required');
+    }
+
+    if (!analysis.overview) {
+      throw new Error('validation failed: analysis must have overview section');
+    }
+
+    if (!analysis.overview.valueProposition || analysis.overview.valueProposition.trim().length === 0) {
+      throw new Error('validation failed: analysis must have value proposition');
+    }
+
+    if (!analysis.overview.targetAudience || analysis.overview.targetAudience.trim().length === 0) {
+      throw new Error('validation failed: analysis must have target audience');
+    }
+
+    if (!analysis.overview.monetization || analysis.overview.monetization.trim().length === 0) {
+      throw new Error('validation failed: analysis must have monetization strategy');
+    }
+
+    if (!analysis.synthesis) {
+      throw new Error('validation failed: analysis must have synthesis section');
+    }
+
+    if (!analysis.synthesis.keyInsights || analysis.synthesis.keyInsights.length === 0) {
+      throw new Error('validation failed: analysis must have key insights');
+    }
+  }
+
+  /**
+   * Validates goal parameter
+   */
+  private validateGoal(goal: string): void {
+    if (typeof goal !== 'string') {
+      throw new Error('validation failed: goal must be a string');
+    }
+
+    const trimmedGoal = goal.trim();
+    if (trimmedGoal.length === 0) {
+      throw new Error('validation failed: goal cannot be empty');
+    }
+
+    if (trimmedGoal.length > 500) {
+      throw new Error('validation failed: goal cannot exceed 500 characters');
+    }
+
+    // Check for potentially harmful content
+    const suspiciousPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /on\w+\s*=/i,
+      /<iframe/i,
+      /eval\s*\(/i
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(trimmedGoal)) {
+        throw new Error('validation failed: goal contains potentially harmful content');
+      }
     }
   }
 
@@ -68,26 +157,60 @@ export class BusinessImprovementService {
     analysis: EnhancedStructuredAnalysis,
     goal?: string
   ): Promise<Omit<BusinessImprovement, 'generatedAt'>> {
-    // Create the improvement prompt
-    const prompt = this.createImprovementPrompt(analysis, goal);
-    const systemPrompt = this.createImprovementSystemPrompt();
-
+    const startTime = Date.now();
+    
     try {
-      // Generate structured content using AI provider
+      // Create the improvement prompt
+      const prompt = this.createImprovementPrompt(analysis, goal);
+      const systemPrompt = this.createImprovementSystemPrompt();
+
+      // Validate prompt length to prevent issues
+      if (prompt.length > 50000) {
+        console.warn(`Improvement prompt is very long (${prompt.length} chars), truncating...`);
+        // Truncate while preserving structure
+        const truncatedPrompt = prompt.substring(0, 45000) + '\n\n[Content truncated for length]';
+      }
+
+      console.log(`Generating improvement content with AI provider (timeout: ${this.timeoutMs}ms)`);
+
+      // Generate structured content using AI provider with timeout handling
       const response = await this.aiProvider.generateStructuredContent(
         prompt,
         this.getImprovementSchema(),
         systemPrompt
       );
 
+      const elapsed = Date.now() - startTime;
+      console.log(`AI improvement generation completed in ${elapsed}ms`);
+
       if (!response) {
         throw new Error('AI provider returned empty response');
+      }
+
+      // Validate response structure before returning
+      if (typeof response !== 'object' || response === null) {
+        throw new Error('AI provider returned invalid response format');
       }
 
       return response;
 
     } catch (error) {
+      const elapsed = Date.now() - startTime;
+      console.error(`AI improvement generation failed after ${elapsed}ms:`, error);
+      
       if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+          throw new Error(`AI generation timeout after ${elapsed}ms: ${error.message}`);
+        }
+        if (error.message.includes('rate limit') || error.message.includes('RATE_LIMITED')) {
+          throw new Error(`AI generation rate limited: ${error.message}`);
+        }
+        if (error.message.includes('API key') || error.message.includes('authentication')) {
+          throw new Error(`AI generation authentication error: ${error.message}`);
+        }
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          throw new Error(`AI generation network error: ${error.message}`);
+        }
         throw new Error(`AI generation error: ${error.message}`);
       }
       throw new Error('AI generation failed with unknown error');

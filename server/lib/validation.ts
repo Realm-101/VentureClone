@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zSource, type Source, type EnhancedStructuredAnalysis } from "@shared/schema";
+import { zSource, type Source, type EnhancedStructuredAnalysis, type FirstPartyData } from "@shared/schema";
 
 /**
  * Validation service for confidence scoring and source attribution
@@ -221,11 +221,201 @@ export class ValidationService {
    * Sanitizes excerpt text to prevent injection attacks
    */
   static sanitizeExcerpt(excerpt: string): string {
+    if (typeof excerpt !== 'string') {
+      throw new Error('Excerpt must be a string');
+    }
+
     // Remove potentially dangerous characters and limit length
     return excerpt
       .replace(/[<>'"&]/g, '') // Remove HTML/script injection characters
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim()
       .substring(0, 300); // Enforce max length
+  }
+
+  /**
+   * Validates API input parameters for analysis requests
+   */
+  static validateAnalysisRequest(body: any): { url: string; goal?: string } {
+    if (!body || typeof body !== 'object') {
+      throw new Error('Request body must be an object');
+    }
+
+    // Validate URL
+    if (!body.url) {
+      throw new Error('URL is required');
+    }
+
+    if (typeof body.url !== 'string') {
+      throw new Error('URL must be a string');
+    }
+
+    const trimmedUrl = body.url.trim();
+    if (trimmedUrl.length === 0) {
+      throw new Error('URL cannot be empty');
+    }
+
+    // Validate URL format and sanitize
+    const sanitizedUrl = this.sanitizeUrl(trimmedUrl);
+
+    // Validate goal if provided
+    let goal: string | undefined;
+    if (body.goal !== undefined) {
+      if (typeof body.goal !== 'string') {
+        throw new Error('Goal must be a string if provided');
+      }
+
+      const trimmedGoal = body.goal.trim();
+      if (trimmedGoal.length === 0) {
+        throw new Error('Goal cannot be empty if provided');
+      }
+
+      if (trimmedGoal.length > 500) {
+        throw new Error('Goal cannot exceed 500 characters');
+      }
+
+      goal = trimmedGoal;
+    }
+
+    return { url: sanitizedUrl, goal };
+  }
+
+  /**
+   * Validates improvement request parameters
+   */
+  static validateImprovementRequest(body: any): { goal?: string } {
+    if (!body || typeof body !== 'object') {
+      return {}; // Goal is optional, so empty body is valid
+    }
+
+    let goal: string | undefined;
+    if (body.goal !== undefined) {
+      if (typeof body.goal !== 'string') {
+        throw new Error('Goal must be a string if provided');
+      }
+
+      const trimmedGoal = body.goal.trim();
+      if (trimmedGoal.length === 0) {
+        throw new Error('Goal cannot be empty if provided');
+      }
+
+      if (trimmedGoal.length > 500) {
+        throw new Error('Goal cannot exceed 500 characters');
+      }
+
+      // Check for potentially harmful content
+      const suspiciousPatterns = [
+        /<script/i,
+        /javascript:/i,
+        /on\w+\s*=/i,
+        /<iframe/i,
+        /eval\s*\(/i
+      ];
+
+      for (const pattern of suspiciousPatterns) {
+        if (pattern.test(trimmedGoal)) {
+          throw new Error('Goal contains potentially harmful content');
+        }
+      }
+
+      goal = trimmedGoal;
+    }
+
+    return { goal };
+  }
+
+  /**
+   * Validates analysis ID parameter
+   */
+  static validateAnalysisId(id: string): string {
+    if (id === null || id === undefined) {
+      throw new Error('Analysis ID is required');
+    }
+
+    if (typeof id !== 'string') {
+      throw new Error('Analysis ID must be a string');
+    }
+
+    const trimmedId = id.trim();
+    if (trimmedId.length === 0) {
+      throw new Error('Analysis ID cannot be empty');
+    }
+
+    // Basic UUID format validation (UUIDs are used as IDs)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(trimmedId)) {
+      throw new Error('Analysis ID must be a valid UUID');
+    }
+
+    return trimmedId;
+  }
+
+  /**
+   * Validates timeout values
+   */
+  static validateTimeout(timeoutMs: number, min: number = 1000, max: number = 60000): number {
+    if (typeof timeoutMs !== 'number' || isNaN(timeoutMs)) {
+      throw new Error('Timeout must be a valid number');
+    }
+
+    if (timeoutMs < min) {
+      throw new Error(`Timeout must be at least ${min}ms`);
+    }
+
+    if (timeoutMs > max) {
+      throw new Error(`Timeout cannot exceed ${max}ms`);
+    }
+
+    return Math.floor(timeoutMs);
+  }
+
+  /**
+   * Validates and sanitizes first-party data
+   */
+  static validateFirstPartyData(data: any): FirstPartyData | null {
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+
+    try {
+      const validated: FirstPartyData = {
+        title: this.sanitizeText(data.title, 200, 'Untitled'),
+        description: this.sanitizeText(data.description, 300, ''),
+        h1: this.sanitizeText(data.h1, 200, ''),
+        textSnippet: this.sanitizeText(data.textSnippet, 500, ''),
+        url: this.sanitizeUrl(data.url)
+      };
+
+      return validated;
+    } catch (error) {
+      console.warn('First-party data validation failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Sanitizes text fields with length limits and fallbacks
+   */
+  private static sanitizeText(text: any, maxLength: number, fallback: string = ''): string {
+    if (typeof text !== 'string') {
+      return fallback;
+    }
+
+    return text
+      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim()
+      .substring(0, maxLength) || fallback;
+  }
+
+  /**
+   * Creates a comprehensive validation error with details
+   */
+  static createValidationError(field: string, message: string, value?: any): Error {
+    const error = new Error(`Validation failed for ${field}: ${message}`);
+    error.name = 'ValidationError';
+    (error as any).field = field;
+    (error as any).value = value;
+    return error;
   }
 }
