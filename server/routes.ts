@@ -5,7 +5,7 @@ import { rateLimit } from "./middleware/rateLimit";
 import { fetchWithTimeout } from "./lib/fetchWithTimeout";
 import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
-import { structuredAnalysisSchema, type StructuredAnalysis } from "@shared/schema";
+import { structuredAnalysisSchema, enhancedStructuredAnalysisSchema, type StructuredAnalysis, type EnhancedStructuredAnalysis } from "@shared/schema";
 import { AIProviderService, type AIProvider } from "./services/ai-providers";
 
 // URL validation helper
@@ -18,14 +18,20 @@ function isValidUrl(string: string): boolean {
   }
 }
 
-// Helper function to parse structured analysis with graceful fallback
-function parseStructuredAnalysis(content: string): { structured?: StructuredAnalysis; summary: string } {
+// Helper function to parse structured analysis with enhanced schema support and graceful fallback
+function parseStructuredAnalysis(content: string): { structured?: StructuredAnalysis | EnhancedStructuredAnalysis; summary: string } {
   try {
     // Try to parse as JSON first
     const parsed = JSON.parse(content);
     
-    // Validate against schema
-    const validated = structuredAnalysisSchema.parse(parsed);
+    // Try enhanced schema first, fall back to original schema
+    let validated: StructuredAnalysis | EnhancedStructuredAnalysis;
+    try {
+      validated = enhancedStructuredAnalysisSchema.parse(parsed);
+    } catch (enhancedError) {
+      console.warn("Enhanced schema validation failed, trying original schema:", enhancedError);
+      validated = structuredAnalysisSchema.parse(parsed);
+    }
     
     // Generate summary from structured data
     const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
@@ -38,8 +44,8 @@ function parseStructuredAnalysis(content: string): { structured?: StructuredAnal
   }
 }
 
-// AI provider integration for business analysis with structured output
-async function analyzeUrlWithProvider(url: string, provider: AIProvider): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
+// Enhanced AI provider integration for evidence-based business analysis
+async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPartyData?: any): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
   const apiKey = provider === 'gemini' ? process.env.GEMINI_API_KEY : 
                  provider === 'openai' ? process.env.OPENAI_API_KEY :
                  process.env.GROK_API_KEY;
@@ -50,46 +56,11 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider): Promis
 
   const aiService = new AIProviderService(apiKey, provider, 15000);
 
-  const structuredPrompt = `Analyze this business URL and provide a structured JSON response with the following format:
+  // Use enhanced prompts with evidence-based analysis
+  const structuredPrompt = aiService.createEnhancedAnalysisPrompt(url, firstPartyData);
+  const systemPrompt = aiService.createEvidenceBasedSystemPrompt();
 
-{
-  "overview": {
-    "valueProposition": "Brief description of the core value proposition",
-    "targetAudience": "Description of the target audience",
-    "monetization": "How the business makes money"
-  },
-  "market": {
-    "competitors": [
-      {"name": "Competitor name", "url": "optional URL", "notes": "optional notes"}
-    ],
-    "swot": {
-      "strengths": ["strength 1", "strength 2"],
-      "weaknesses": ["weakness 1", "weakness 2"],
-      "opportunities": ["opportunity 1", "opportunity 2"],
-      "threats": ["threat 1", "threat 2"]
-    }
-  },
-  "technical": {
-    "techStack": ["technology 1", "technology 2"]
-  },
-  "data": {
-    "keyMetrics": [
-      {"name": "metric name", "value": "metric value"}
-    ]
-  },
-  "synthesis": {
-    "summary": "Concise 100-150 word business analysis summary",
-    "keyInsights": ["insight 1", "insight 2", "insight 3"],
-    "nextActions": ["action 1", "action 2", "action 3"]
-  }
-}
-
-URL: ${url}
-
-Respond ONLY with valid JSON. Do not include any text before or after the JSON.`;
-
-  const systemPrompt = "You are a business analyst. Respond only with valid JSON in the exact format requested.";
-
+  // Enhanced schema with confidence scoring and source attribution
   const schema = {
     type: "object",
     properties: {
@@ -131,19 +102,31 @@ Respond ONLY with valid JSON. Do not include any text before or after the JSON.`
       technical: {
         type: "object",
         properties: {
-          techStack: { type: "array", items: { type: "string" } }
+          techStack: { type: "array", items: { type: "string" } },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          uiColors: { type: "array", items: { type: "string" } },
+          keyPages: { type: "array", items: { type: "string" } }
         }
       },
       data: {
         type: "object",
         properties: {
+          trafficEstimates: {
+            type: "object",
+            properties: {
+              value: { type: "string" },
+              source: { type: "string", format: "uri" }
+            }
+          },
           keyMetrics: {
             type: "array",
             items: {
               type: "object",
               properties: {
                 name: { type: "string" },
-                value: { type: "string" }
+                value: { type: "string" },
+                source: { type: "string", format: "uri" },
+                asOf: { type: "string" }
               },
               required: ["name", "value"]
             }
@@ -158,6 +141,18 @@ Respond ONLY with valid JSON. Do not include any text before or after the JSON.`
           nextActions: { type: "array", items: { type: "string" } }
         },
         required: ["summary", "keyInsights", "nextActions"]
+      },
+      sources: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            url: { type: "string", format: "uri" },
+            excerpt: { type: "string", minLength: 10, maxLength: 300 }
+          },
+          required: ["url", "excerpt"]
+        },
+        default: []
       }
     },
     required: ["overview", "synthesis"]
@@ -166,8 +161,14 @@ Respond ONLY with valid JSON. Do not include any text before or after the JSON.`
   try {
     const result = await aiService.generateStructuredContent(structuredPrompt, schema, systemPrompt);
     
-    // Validate the result against our schema
-    const validated = structuredAnalysisSchema.parse(result);
+    // Try to validate against enhanced schema first, fall back to original schema for backward compatibility
+    let validated: StructuredAnalysis | EnhancedStructuredAnalysis;
+    try {
+      validated = enhancedStructuredAnalysisSchema.parse(result);
+    } catch (enhancedError) {
+      console.warn("Enhanced schema validation failed, falling back to original schema:", enhancedError);
+      validated = structuredAnalysisSchema.parse(result);
+    }
     
     // Generate summary from structured data
     const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
@@ -185,12 +186,12 @@ Respond ONLY with valid JSON. Do not include any text before or after the JSON.`
 
 
 
-// Multi-provider analysis with Gemini as primary and Grok as fallback
-async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: string; structured?: StructuredAnalysis }> {
+// Multi-provider analysis with enhanced evidence-based prompts
+async function analyzeUrlWithAI(url: string, firstPartyData?: any): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
   // Try Gemini first
   try {
-    console.log("Attempting analysis with Gemini...");
-    return await analyzeUrlWithProvider(url, 'gemini');
+    console.log("Attempting enhanced analysis with Gemini...");
+    return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
   } catch (geminiError) {
     console.warn("Gemini analysis failed, falling back to Grok:", geminiError);
     
@@ -201,8 +202,8 @@ async function analyzeUrlWithAI(url: string): Promise<{ content: string; model: 
     
     // Fallback to Grok
     try {
-      console.log("Attempting analysis with Grok...");
-      return await analyzeUrlWithProvider(url, 'grok');
+      console.log("Attempting enhanced analysis with Grok...");
+      return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
     } catch (grokError) {
       console.error("Both Gemini and Grok failed:", { geminiError, grokError });
       
