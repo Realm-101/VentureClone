@@ -37,7 +37,7 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
   useEffect(() => {
     if (activeProvider) {
       setSelectedProvider(activeProvider.provider);
-      setApiKey(activeProvider.apiKey);
+      // Don't set the API key since it's from environment
     }
   }, [activeProvider]);
 
@@ -78,18 +78,10 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
   });
 
   const handleTestConnection = async () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an API key",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsTestingConnection(true);
     try {
-      const isConnected = await AIService.testConnection(selectedProvider, apiKey);
+      // Test with environment API key (no key needed from user)
+      const isConnected = await AIService.testConnection(selectedProvider, '');
       
       if (isConnected) {
         toast({
@@ -99,7 +91,7 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
       } else {
         toast({
           title: "Error",
-          description: "Connection test failed. Please check your API key.",
+          description: "Connection test failed. Please check your environment configuration.",
           variant: "destructive",
         });
       }
@@ -115,20 +107,12 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
   };
 
   const handleSave = () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an API key",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    saveProviderMutation.mutate({
-      provider: selectedProvider,
-      apiKey: apiKey.trim(),
-      isActive: true
+    // Since we're using environment variables, just close the modal
+    toast({
+      title: "Info",
+      description: `Using ${selectedProvider.toUpperCase()} from environment configuration`,
     });
+    onClose();
   };
 
   const handleClose = () => {
@@ -161,43 +145,24 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
           {/* Provider Selection */}
           <div>
             <Label className="text-sm font-medium text-vc-text mb-2">AI Provider</Label>
-            <Select value={selectedProvider} onValueChange={(value: any) => setSelectedProvider(value)}>
-              <SelectTrigger className="w-full bg-vc-dark border-vc-border text-vc-text focus:border-vc-primary" data-testid="select-provider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-vc-card border-vc-border">
+            <Select 
+              value={selectedProvider} 
+              onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'gemini' | 'grok')}
+              className="w-full bg-vc-dark border-vc-border text-vc-text focus:border-vc-primary" 
+              data-testid="select-provider"
+            >
+              {providers.some(p => p.provider === 'gemini') && (
+                <SelectItem value="gemini" className="text-vc-text">Google Gemini 2.5 Flash</SelectItem>
+              )}
+              {providers.some(p => p.provider === 'openai') && (
                 <SelectItem value="openai" className="text-vc-text">OpenAI GPT-4</SelectItem>
-                <SelectItem value="gemini" className="text-vc-text">Google Gemini 2.5 Pro</SelectItem>
-                <SelectItem value="grok" className="text-vc-text">xAI Grok 4</SelectItem>
-              </SelectContent>
+              )}
+              {providers.some(p => p.provider === 'grok') && (
+                <SelectItem value="grok" className="text-vc-text">xAI Grok</SelectItem>
+              )}
             </Select>
-          </div>
-
-          {/* API Key Input */}
-          <div>
-            <Label className="text-sm font-medium text-vc-text mb-2">API Key</Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="w-full bg-vc-dark border-vc-border pr-10 text-vc-text focus:border-vc-primary"
-                data-testid="input-api-key"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-vc-text-muted hover:text-vc-text h-8 w-8"
-                onClick={() => setShowPassword(!showPassword)}
-                data-testid="button-toggle-password"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
             <p className="text-xs text-vc-text-muted mt-1">
-              Your API key is stored locally and never shared
+              Configured via environment variables
             </p>
           </div>
 
@@ -206,7 +171,7 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
             variant="outline"
             className="w-full bg-vc-primary/20 border-vc-primary text-vc-primary hover:bg-vc-primary/30 transition-colors"
             onClick={handleTestConnection}
-            disabled={isTestingConnection || !apiKey.trim()}
+            disabled={isTestingConnection}
             data-testid="button-test-connection"
           >
             <Link className="mr-2 h-4 w-4" />
@@ -216,20 +181,11 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
 
         <div className="flex space-x-3 mt-6">
           <Button
-            variant="outline"
-            className="flex-1 bg-vc-border text-vc-text hover:bg-vc-border/80 transition-colors"
-            onClick={handleClose}
-            data-testid="button-cancel"
-          >
-            Cancel
-          </Button>
-          <Button
             className="flex-1 bg-vc-primary hover:bg-vc-primary/80 text-white transition-colors shadow-neon"
-            onClick={handleSave}
-            disabled={saveProviderMutation.isPending || !apiKey.trim()}
-            data-testid="button-save-configuration"
+            onClick={handleClose}
+            data-testid="button-close"
           >
-            {saveProviderMutation.isPending ? 'Saving...' : 'Save Configuration'}
+            Close
           </Button>
         </div>
       </DialogContent>

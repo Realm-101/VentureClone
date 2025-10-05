@@ -222,3 +222,67 @@ export interface EnhancedAnalysisRecord extends BusinessAnalysis {
 export interface AnalysisRecord extends BusinessAnalysis {
   structured?: StructuredAnalysis;
 }
+
+// Stage 2: Lazy-Entrepreneur Filter schema
+export const stage2ContentSchema = z.object({
+  effortScore: z.number().min(1).max(10),
+  rewardScore: z.number().min(1).max(10),
+  recommendation: z.enum(['go', 'no-go', 'maybe']),
+  reasoning: z.string(),
+  automationPotential: z.object({
+    score: z.number().min(0).max(1),
+    opportunities: z.array(z.string()),
+  }),
+  resourceRequirements: z.object({
+    time: z.string(),
+    money: z.string(),
+    skills: z.array(z.string()),
+  }),
+  nextSteps: z.array(z.string()),
+});
+
+export type Stage2Content = z.infer<typeof stage2ContentSchema>;
+
+// Stage 3: MVP Launch Planning schema
+export const stage3ContentSchema = z.object({
+  coreFeatures: z.array(z.string()).min(3).max(5),
+  niceToHaves: z.array(z.string()).min(3).max(5),
+  techStack: z.object({
+    frontend: z.array(z.string()).min(1),
+    backend: z.array(z.string()).min(1),
+    infrastructure: z.array(z.string()).min(1),
+  }),
+  timeline: z.array(z.object({
+    phase: z.string(),
+    duration: z.string(),
+    deliverables: z.array(z.string()).min(3),
+  })).min(3).max(4),
+  estimatedCost: z.string(),
+});
+
+export type Stage3Content = z.infer<typeof stage3ContentSchema>;
+
+// Stage 4: Demand Testing Strategy schema
+export const stage4ContentSchema = z.object({
+  testingMethods: z.array(z.object({
+    method: z.string(),
+    description: z.string(),
+    cost: z.string(),
+    timeline: z.string(),
+  })).min(3).max(5),
+  successMetrics: z.array(z.object({
+    metric: z.string(),
+    target: z.string(),
+    measurement: z.string(),
+  })).min(3).max(5),
+  budget: z.object({
+    total: z.string(),
+    breakdown: z.array(z.object({
+      item: z.string(),
+      cost: z.string(),
+    })),
+  }),
+  timeline: z.string(),
+});
+
+export type Stage4Content = z.infer<typeof stage4ContentSchema>;

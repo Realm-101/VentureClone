@@ -40,7 +40,7 @@ export class AIProviderService {
 
     switch (this.provider) {
       case 'openai':
-        this.openaiClient = new OpenAI({ 
+        this.openaiClient = new OpenAI({
           apiKey: this.apiKey,
           ...clientOptions
         });
@@ -49,8 +49,8 @@ export class AIProviderService {
         this.geminiClient = new GoogleGenerativeAI(this.apiKey);
         break;
       case 'grok':
-        this.grokClient = new OpenAI({ 
-          baseURL: "https://api.x.ai/v1", 
+        this.grokClient = new OpenAI({
+          baseURL: "https://api.x.ai/v1",
           apiKey: this.apiKey,
           ...clientOptions
         });
@@ -136,14 +136,19 @@ export class AIProviderService {
       messages,
     });
 
-    return {
-      content: response.choices[0].message.content || '',
-      usage: response.usage ? {
+    const aiResponse: AIResponse = {
+      content: response.choices[0]?.message?.content || '',
+    };
+
+    if (response.usage) {
+      aiResponse.usage = {
         prompt_tokens: response.usage.prompt_tokens,
         completion_tokens: response.usage.completion_tokens,
         total_tokens: response.usage.total_tokens,
-      } : undefined,
-    };
+      };
+    }
+
+    return aiResponse;
   }
 
   private async generateOpenAIStructuredContent(prompt: string, schema: any, systemPrompt?: string): Promise<any> {
@@ -161,7 +166,7 @@ export class AIProviderService {
       response_format: { type: "json_object" },
     });
 
-    const content = response.choices[0].message.content;
+    const content = response.choices[0]?.message?.content;
     return content ? JSON.parse(content) : null;
   }
 
@@ -169,23 +174,40 @@ export class AIProviderService {
     if (!this.geminiClient) throw new Error('Gemini client not initialized');
 
     try {
-      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-      
+      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.5-flash" });
+
       const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
-      
+
+      console.log(`Gemini API request starting (timeout: ${this.timeoutMs}ms)...`);
+      const startTime = Date.now();
+
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
-      
-      return {
+
+      const elapsedTime = Date.now() - startTime;
+      console.log(`Gemini API request completed in ${elapsedTime}ms`);
+
+      const aiResponse: AIResponse = {
         content: response.text() || '',
-        usage: {
-          prompt_tokens: 0, // Gemini doesn't provide token counts in the same way
-          completion_tokens: 0,
-          total_tokens: 0,
-        },
       };
+
+      return aiResponse;
     } catch (error) {
-      throw new Error(`Gemini API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Gemini API error: ${errorMessage}`);
+
+      // Check for specific error types
+      if (errorMessage.includes('API key')) {
+        throw new Error(`Gemini API key error: ${errorMessage}`);
+      }
+      if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
+        throw new Error(`Gemini API quota exceeded: ${errorMessage}`);
+      }
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        throw new Error(`Gemini API timeout: Request took too long to complete`);
+      }
+
+      throw new Error(`Gemini API error: ${errorMessage}`);
     }
   }
 
@@ -193,23 +215,54 @@ export class AIProviderService {
     if (!this.geminiClient) throw new Error('Gemini client not initialized');
 
     try {
-      const model = this.geminiClient.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp",
+      console.log(`Gemini structured API request starting (timeout: ${this.timeoutMs}ms)...`);
+      const startTime = Date.now();
+
+      // Use JSON mode without schema - Gemini's schema format is different from JSON Schema
+      // The prompt itself will guide the structure
+      const model = this.geminiClient.getGenerativeModel({
+        model: "gemini-2.5-flash",
         generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: schema,
         },
       });
-      
+
       const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
-      
+
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
-      
+
+      const elapsedTime = Date.now() - startTime;
+      console.log(`Gemini structured API request completed in ${elapsedTime}ms`);
+
       const content = response.text();
       return content ? JSON.parse(content) : null;
     } catch (error) {
-      throw new Error(`Gemini structured content error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error(`Gemini structured API error: ${errorMessage}`);
+      if (errorStack) {
+        console.error(`Error stack: ${errorStack}`);
+      }
+
+      // Check for specific error types
+      if (errorMessage.includes('API key') || errorMessage.includes('API_KEY')) {
+        throw new Error(`Gemini API key error: ${errorMessage}`);
+      }
+      if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error(`Gemini API quota exceeded: ${errorMessage}`);
+      }
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT') || errorMessage.includes('DEADLINE_EXCEEDED')) {
+        throw new Error(`Gemini API timeout: Request took too long to complete`);
+      }
+      if (errorMessage.includes('INVALID_ARGUMENT') || errorMessage.includes('schema')) {
+        throw new Error(`Gemini schema error: ${errorMessage}`);
+      }
+      if (errorMessage.includes('SAFETY') || errorMessage.includes('blocked')) {
+        throw new Error(`Gemini safety filter triggered: ${errorMessage}`);
+      }
+
+      throw new Error(`Gemini structured content error: ${errorMessage}`);
     }
   }
 
@@ -227,33 +280,79 @@ export class AIProviderService {
       messages,
     });
 
-    return {
-      content: response.choices[0].message.content || '',
-      usage: response.usage ? {
+    const aiResponse: AIResponse = {
+      content: response.choices[0]?.message?.content || '',
+    };
+
+    if (response.usage) {
+      aiResponse.usage = {
         prompt_tokens: response.usage.prompt_tokens,
         completion_tokens: response.usage.completion_tokens,
         total_tokens: response.usage.total_tokens,
-      } : undefined,
-    };
+      };
+    }
+
+    return aiResponse;
   }
 
   private async generateGrokStructuredContent(prompt: string, schema: any, systemPrompt?: string): Promise<any> {
     if (!this.grokClient) throw new Error('Grok client not initialized');
 
-    const messages: any[] = [];
-    if (systemPrompt) {
-      messages.push({ role: "system", content: systemPrompt });
+    try {
+      const messages: any[] = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      messages.push({ role: "user", content: prompt });
+
+      console.log(`Grok structured API request starting (timeout: ${this.timeoutMs}ms)...`);
+      const startTime = Date.now();
+
+      const response = await this.grokClient.chat.completions.create({
+        model: "grok-2-1212",
+        messages,
+        response_format: { type: "json_object" },
+      });
+
+      const elapsedTime = Date.now() - startTime;
+      console.log(`Grok structured API request completed in ${elapsedTime}ms`);
+
+      const content = response.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('Grok returned empty content');
+      }
+
+      // Log the response for debugging
+      console.log('Grok response preview:', content.substring(0, 200));
+      
+      // Check if response looks like HTML
+      if (content.trim().startsWith('<') || content.includes('<!DOCTYPE')) {
+        console.error('Grok returned HTML instead of JSON:', content.substring(0, 500));
+        throw new Error('Grok API returned HTML instead of JSON. This may indicate an API error or invalid API key.');
+      }
+
+      return JSON.parse(content);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Grok structured content error: ${errorMessage}`);
+      
+      // Check for specific error types
+      if (errorMessage.includes('API key') || errorMessage.includes('API_KEY') || errorMessage.includes('Unauthorized')) {
+        throw new Error(`Grok API key error: ${errorMessage}`);
+      }
+      if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
+        throw new Error(`Grok API quota exceeded: ${errorMessage}`);
+      }
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        throw new Error(`Grok API timeout: ${errorMessage}`);
+      }
+      if (errorMessage.includes('HTML')) {
+        throw new Error(`Grok API error: ${errorMessage}`);
+      }
+      
+      throw new Error(`Grok structured content error: ${errorMessage}`);
     }
-    messages.push({ role: "user", content: prompt });
-
-    const response = await this.grokClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages,
-      response_format: { type: "json_object" },
-    });
-
-    const content = response.choices[0].message.content;
-    return content ? JSON.parse(content) : null;
   }
 
   async testConnection(): Promise<boolean> {

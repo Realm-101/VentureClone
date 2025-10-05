@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { minimalStorage } from "./minimal-storage";
+import { minimalStorage, type CreateAnalysisInput } from "./minimal-storage";
 import { rateLimit } from "./middleware/rateLimit";
 import { AppError } from "./middleware/errorHandler";
 import { healthzHandler } from "./routes/healthz";
@@ -37,7 +37,8 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
     throw new Error(`${provider.toUpperCase()}_API_KEY missing`);
   }
 
-  const aiService = new AIProviderService(apiKey, provider, 15000);
+  // Increase timeout to 30 seconds for more complex analysis
+  const aiService = new AIProviderService(apiKey, provider, 30000);
 
   // Use enhanced prompts with evidence-based analysis
   const structuredPrompt = aiService.createEnhancedAnalysisPrompt(url, firstPartyData);
@@ -142,7 +143,9 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
   };
 
   try {
+    console.log(`Calling ${provider} generateStructuredContent...`);
     const result = await aiService.generateStructuredContent(structuredPrompt, schema, systemPrompt);
+    console.log(`${provider} generateStructuredContent returned successfully`);
     
     // Validate and sanitize the AI response with confidence scoring and source validation
     let validated: StructuredAnalysis | EnhancedStructuredAnalysis;
@@ -167,13 +170,16 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
     // Generate summary from structured data
     const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
     
-    const modelName = provider === 'gemini' ? 'gemini:gemini-2.0-flash-exp' :
+    const modelName = provider === 'gemini' ? 'gemini:gemini-2.5-flash' :
                      provider === 'openai' ? 'openai:gpt-4o' :
                      'grok:grok-2-1212';
     
     return { content: summary, model: modelName, structured: validated };
   } catch (error) {
-    console.error(`${provider} structured analysis failed:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error(`${provider} structured analysis failed:`, errorMessage);
+    console.error(`Error details:`, { errorMessage, errorStack });
     
     // Enhanced error handling for validation failures
     if (error instanceof Error) {
@@ -183,9 +189,12 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
       if (error.message.includes('source') || error.message.includes('Source')) {
         throw new AppError(`Invalid source attribution in AI response: ${error.message}`, 502, 'AI_VALIDATION_ERROR');
       }
+      if (error.message.includes('schema')) {
+        throw new AppError(`Schema validation error: ${error.message}`, 502, 'AI_VALIDATION_ERROR');
+      }
     }
     
-    throw new AppError(`${provider} analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 502, 'AI_PROVIDER_DOWN');
+    throw new AppError(`${provider} analysis failed: ${errorMessage}`, 502, 'AI_PROVIDER_DOWN');
   }
 }
 
@@ -227,36 +236,39 @@ async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): P
   const analysisKey = `${url}-${firstPartyData ? 'with-fp' : 'no-fp'}`;
   
   return manageConcurrentAnalysis(analysisKey, async () => {
-    // Try Gemini first
+    // Try Grok first (temporary workaround while debugging Gemini)
     try {
-      console.log("Attempting enhanced analysis with Gemini...");
-      return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
-    } catch (geminiError) {
-      console.warn("Gemini analysis failed, falling back to Grok:", geminiError);
+      console.log("Attempting enhanced analysis with Grok...");
+      return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
+    } catch (grokError) {
+      console.warn("Grok analysis failed, falling back to Gemini:", grokError);
       
-      // If Gemini failed due to timeout, don't try Grok
-      if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
-        throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
-      }
-      
-      // Fallback to Grok
+      // Fallback to Gemini
       try {
-        console.log("Attempting enhanced analysis with Grok...");
-        return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
-      } catch (grokError) {
-        console.error("Both Gemini and Grok failed:", { geminiError, grokError });
+        console.log("Attempting enhanced analysis with Gemini (gemini-2.5-flash)...");
+        return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
+      } catch (geminiError) {
+        console.error("Both Grok and Gemini failed:", { grokError, geminiError });
         
         // Handle timeout errors specifically
-        if (grokError instanceof Error && grokError.message.includes('timeout')) {
-          throw new AppError("AI provider request timeout", 504, 'GATEWAY_TIMEOUT');
+        if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
+          throw new AppError("AI provider request timeout. The analysis is taking longer than expected. Please try again.", 504, 'GATEWAY_TIMEOUT');
         }
         
-        // If both providers failed with non-timeout errors, return 502
-        if (geminiError instanceof AppError || grokError instanceof AppError) {
-          throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
-        }
+        // Provide detailed error information
+        const grokErrorMsg = grokError instanceof Error ? grokError.message : 'Unknown error';
+        const geminiErrorMsg = geminiError instanceof Error ? geminiError.message : 'Unknown error';
         
-        throw new AppError("Both AI providers failed. Please check your API keys and try again.", 502, 'AI_PROVIDER_DOWN');
+        console.error("Detailed errors:", {
+          grok: grokErrorMsg,
+          gemini: geminiErrorMsg
+        });
+        
+        throw new AppError(
+          `Both AI providers failed. Grok: ${grokErrorMsg}. Gemini: ${geminiErrorMsg}`, 
+          502, 
+          'AI_PROVIDER_DOWN'
+        );
       }
     }
   });
@@ -267,6 +279,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // GET /api/healthz - Health check endpoint
   app.get("/api/healthz", healthzHandler);
+  
+  // GET /api/ai-providers - List available AI providers based on environment
+  app.get("/api/ai-providers", async (req, res, next) => {
+    try {
+      const providers = [];
+      
+      if (process.env.GEMINI_API_KEY) {
+        providers.push({
+          id: 'gemini',
+          provider: 'gemini',
+          apiKey: '***',
+          isActive: true,
+          userId: req.userId
+        });
+      }
+      
+      if (process.env.OPENAI_API_KEY) {
+        providers.push({
+          id: 'openai',
+          provider: 'openai',
+          apiKey: '***',
+          isActive: !process.env.GEMINI_API_KEY,
+          userId: req.userId
+        });
+      }
+      
+      if (process.env.GROK_API_KEY) {
+        providers.push({
+          id: 'grok',
+          provider: 'grok',
+          apiKey: '***',
+          isActive: !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY,
+          userId: req.userId
+        });
+      }
+      
+      res.json(providers);
+    } catch (error) {
+      console.error("Failed to fetch AI providers:", error);
+      next(new AppError("Failed to fetch AI providers", 500, 'INTERNAL'));
+    }
+  });
+  
+  // GET /api/ai-providers/active - Get the active AI provider
+  app.get("/api/ai-providers/active", async (req, res, next) => {
+    try {
+      // Temporarily default to Grok while debugging Gemini issues
+      if (process.env.GROK_API_KEY) {
+        res.json({
+          id: 'grok',
+          provider: 'grok',
+          apiKey: '***',
+          isActive: true,
+          userId: req.userId
+        });
+      } else if (process.env.GEMINI_API_KEY) {
+        res.json({
+          id: 'gemini',
+          provider: 'gemini',
+          apiKey: '***',
+          isActive: true,
+          userId: req.userId
+        });
+      } else if (process.env.OPENAI_API_KEY) {
+        res.json({
+          id: 'openai',
+          provider: 'openai',
+          apiKey: '***',
+          isActive: true,
+          userId: req.userId
+        });
+      } else {
+        res.json(null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch active AI provider:", error);
+      next(new AppError("Failed to fetch active AI provider", 500, 'INTERNAL'));
+    }
+  });
+  
+  // POST /api/ai-providers - Save AI provider configuration (no-op for env-based config)
+  app.post("/api/ai-providers", async (req, res, next) => {
+    try {
+      // Since we're using environment variables, this is a no-op
+      // Just return success to keep the UI happy
+      res.json({
+        id: req.body.provider,
+        provider: req.body.provider,
+        apiKey: '***',
+        isActive: true,
+        userId: req.userId
+      });
+    } catch (error) {
+      console.error("Failed to save AI provider:", error);
+      next(new AppError("Failed to save AI provider", 500, 'INTERNAL'));
+    }
+  });
+  
+  // PATCH /api/ai-providers/:id - Update AI provider (no-op for env-based config)
+  app.patch("/api/ai-providers/:id", async (req, res, next) => {
+    try {
+      // Since we're using environment variables, this is a no-op
+      // Just return success to keep the UI happy
+      res.json({
+        id: req.params.id,
+        provider: req.params.id,
+        apiKey: '***',
+        isActive: true,
+        userId: req.userId
+      });
+    } catch (error) {
+      console.error("Failed to update AI provider:", error);
+      next(new AppError("Failed to update AI provider", 500, 'INTERNAL'));
+    }
+  });
+  
+  // POST /api/ai-providers/test - Test AI provider connection
+  app.post("/api/ai-providers/test", async (req, res, next) => {
+    try {
+      const { provider, apiKey } = req.body;
+      
+      // Use the environment API key if no key is provided
+      const keyToTest = apiKey || (
+        provider === 'gemini' ? process.env.GEMINI_API_KEY :
+        provider === 'openai' ? process.env.OPENAI_API_KEY :
+        process.env.GROK_API_KEY
+      );
+      
+      if (!keyToTest) {
+        res.json({ success: false });
+        return;
+      }
+      
+      const aiService = new AIProviderService(keyToTest, provider as AIProvider, 10000);
+      const isConnected = await aiService.testConnection();
+      
+      res.json({ success: isConnected });
+    } catch (error) {
+      console.error("Failed to test AI provider connection:", error);
+      res.json({ success: false });
+    }
+  });
   
   // GET /api/business-analyses - List user's analyses in reverse chronological order
   app.get("/api/business-analyses", async (req, res, next) => {
@@ -370,13 +524,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save analysis to storage with structured data and first-party data
       try {
-        const analysis = await minimalStorage.createAnalysis(req.userId, {
+        const analysisInput: CreateAnalysisInput = {
           url,
           summary: analysisResult.content,
           model: analysisResult.model,
-          structured: analysisResult.structured,
-          firstPartyData: firstPartyData || undefined
-        });
+        };
+        
+        if (analysisResult.structured) {
+          analysisInput.structured = analysisResult.structured;
+        }
+        
+        if (firstPartyData) {
+          analysisInput.firstPartyData = firstPartyData;
+        }
+        
+        const analysis = await minimalStorage.createAnalysis(req.userId, analysisInput);
 
         res.json(analysis);
       } catch (storageError) {
@@ -398,6 +560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let validatedInput: { goal?: string };
       
       try {
+        if (!req.params.id) {
+          throw new Error("Analysis ID is required");
+        }
         validatedId = ValidationService.validateAnalysisId(req.params.id);
         validatedInput = ValidationService.validateImprovementRequest(req.body);
       } catch (validationError) {
@@ -491,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         improvement = await improvementService.generateImprovement(
           enhancedAnalysis,
-          goal || undefined
+          goal ?? undefined
         );
       } catch (improvementError) {
         console.error("Business improvement generation failed:", improvementError);
@@ -568,6 +733,525 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Business improvement generation failed:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/stages/2 - Generate Stage 2 (Lazy-Entrepreneur Filter)
+  app.post("/api/business-analyses/:id/stages/2", rateLimit, async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/stages/2 hit", { id: req.params.id });
+    try {
+      const analysisId = req.params.id;
+      
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Get the analysis
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Validate that analysis has required data
+      if (!analysis.structured) {
+        throw new AppError(
+          "Analysis does not have structured data required for stage generation", 
+          400, 
+          'BAD_REQUEST',
+          'This analysis does not contain the structured data needed to generate stages.'
+        );
+      }
+
+      // Check for at least one AI provider API key
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
+        throw new AppError(
+          "At least one AI provider API key is required", 
+          500, 
+          'CONFIG_MISSING',
+          'AI service is not configured. Please contact support.'
+        );
+      }
+
+      // Create AI provider service
+      let aiProvider: AIProviderService;
+      if (process.env.GROK_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
+      } else if (process.env.GEMINI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
+      } else if (process.env.OPENAI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
+      } else {
+        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
+      }
+
+      // Import WorkflowService dynamically to avoid circular dependencies
+      const { WorkflowService } = await import('./services/workflow');
+      const workflowService = new WorkflowService(minimalStorage);
+
+      // Get Stage 2 prompt
+      const { prompt, systemPrompt } = workflowService.getStage2Prompt(analysis);
+
+      // Define Stage 2 schema
+      const stage2Schema = {
+        type: "object",
+        properties: {
+          effortScore: { type: "number", minimum: 1, maximum: 10 },
+          rewardScore: { type: "number", minimum: 1, maximum: 10 },
+          recommendation: { type: "string", enum: ["go", "no-go", "maybe"] },
+          reasoning: { type: "string" },
+          automationPotential: {
+            type: "object",
+            properties: {
+              score: { type: "number", minimum: 0, maximum: 1 },
+              opportunities: { type: "array", items: { type: "string" } }
+            },
+            required: ["score", "opportunities"]
+          },
+          resourceRequirements: {
+            type: "object",
+            properties: {
+              time: { type: "string" },
+              money: { type: "string" },
+              skills: { type: "array", items: { type: "string" } }
+            },
+            required: ["time", "money", "skills"]
+          },
+          nextSteps: { type: "array", items: { type: "string" } }
+        },
+        required: ["effortScore", "rewardScore", "recommendation", "reasoning", "automationPotential", "resourceRequirements", "nextSteps"]
+      };
+
+      // Generate Stage 2 content
+      let stage2Content: any;
+      try {
+        stage2Content = await aiProvider.generateStructuredContent(prompt, stage2Schema, systemPrompt);
+      } catch (aiError) {
+        console.error("AI generation failed for Stage 2:", aiError);
+        throw new AppError(
+          "Failed to generate Stage 2 content",
+          502,
+          'AI_PROVIDER_DOWN',
+          'AI service failed to generate the Lazy-Entrepreneur Filter. Please try again.'
+        );
+      }
+
+      // Validate Stage 2 content with Zod
+      const { stage2ContentSchema } = await import('@shared/schema');
+      try {
+        stage2Content = stage2ContentSchema.parse(stage2Content);
+      } catch (validationError) {
+        console.error("Stage 2 content validation failed:", validationError);
+        throw new AppError(
+          "Generated Stage 2 content is invalid",
+          502,
+          'AI_VALIDATION_ERROR',
+          'The AI generated invalid data. Please try again.'
+        );
+      }
+
+      // Create stage data object
+      const stageData = workflowService.createStageData(2, stage2Content, 'completed');
+
+      // Save stage data to analysis
+      const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
+        req.userId,
+        analysisId,
+        2,
+        stageData
+      );
+
+      if (!updatedAnalysis) {
+        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
+      }
+
+      // Return the stage data
+      res.json({
+        stageNumber: 2,
+        stageName: 'Lazy-Entrepreneur Filter',
+        content: stage2Content,
+        generatedAt: stageData.generatedAt,
+        nextStage: 3
+      });
+
+    } catch (error) {
+      console.error("Stage 2 generation failed:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/stages/3 - Generate Stage 3 (MVP Launch Planning)
+  app.post("/api/business-analyses/:id/stages/3", rateLimit, async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/stages/3 hit", { id: req.params.id });
+    try {
+      const analysisId = req.params.id;
+      
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Get the analysis
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Validate that analysis has required data
+      if (!analysis.structured) {
+        throw new AppError(
+          "Analysis does not have structured data required for stage generation", 
+          400, 
+          'BAD_REQUEST',
+          'This analysis does not contain the structured data needed to generate stages.'
+        );
+      }
+
+      // Import WorkflowService dynamically to avoid circular dependencies
+      const { WorkflowService } = await import('./services/workflow');
+      const workflowService = new WorkflowService(minimalStorage);
+
+      // Validate stage progression - Stage 2 must be completed first
+      const progressionCheck = await workflowService.validateStageProgression(
+        req.userId,
+        analysisId,
+        3
+      );
+
+      if (!progressionCheck.valid) {
+        throw new AppError(
+          progressionCheck.reason || "Cannot progress to Stage 3",
+          400,
+          'BAD_REQUEST',
+          progressionCheck.reason || "Stage 2 must be completed before accessing Stage 3"
+        );
+      }
+
+      // Check for at least one AI provider API key
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
+        throw new AppError(
+          "At least one AI provider API key is required", 
+          500, 
+          'CONFIG_MISSING',
+          'AI service is not configured. Please contact support.'
+        );
+      }
+
+      // Create AI provider service
+      let aiProvider: AIProviderService;
+      if (process.env.GROK_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
+      } else if (process.env.GEMINI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
+      } else if (process.env.OPENAI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
+      } else {
+        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
+      }
+
+      // Get Stage 3 prompt
+      const { prompt, systemPrompt } = workflowService.getStage3Prompt(analysis);
+
+      // Define Stage 3 schema
+      const stage3Schema = {
+        type: "object",
+        properties: {
+          coreFeatures: { 
+            type: "array", 
+            items: { type: "string" },
+            minItems: 3,
+            maxItems: 5
+          },
+          niceToHaves: { 
+            type: "array", 
+            items: { type: "string" },
+            minItems: 3,
+            maxItems: 5
+          },
+          techStack: {
+            type: "object",
+            properties: {
+              frontend: { type: "array", items: { type: "string" }, minItems: 1 },
+              backend: { type: "array", items: { type: "string" }, minItems: 1 },
+              infrastructure: { type: "array", items: { type: "string" }, minItems: 1 }
+            },
+            required: ["frontend", "backend", "infrastructure"]
+          },
+          timeline: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                phase: { type: "string" },
+                duration: { type: "string" },
+                deliverables: { type: "array", items: { type: "string" }, minItems: 3 }
+              },
+              required: ["phase", "duration", "deliverables"]
+            },
+            minItems: 3,
+            maxItems: 4
+          },
+          estimatedCost: { type: "string" }
+        },
+        required: ["coreFeatures", "niceToHaves", "techStack", "timeline", "estimatedCost"]
+      };
+
+      // Generate Stage 3 content
+      let stage3Content: any;
+      try {
+        stage3Content = await aiProvider.generateStructuredContent(prompt, stage3Schema, systemPrompt);
+      } catch (aiError) {
+        console.error("AI generation failed for Stage 3:", aiError);
+        throw new AppError(
+          "Failed to generate Stage 3 content",
+          502,
+          'AI_PROVIDER_DOWN',
+          'AI service failed to generate the MVP Launch Plan. Please try again.'
+        );
+      }
+
+      // Validate Stage 3 content with Zod
+      const { stage3ContentSchema } = await import('@shared/schema');
+      try {
+        stage3Content = stage3ContentSchema.parse(stage3Content);
+      } catch (validationError) {
+        console.error("Stage 3 content validation failed:", validationError);
+        throw new AppError(
+          "Generated Stage 3 content is invalid",
+          502,
+          'AI_VALIDATION_ERROR',
+          'The AI generated invalid data. Please try again.'
+        );
+      }
+
+      // Create stage data object
+      const stageData = workflowService.createStageData(3, stage3Content, 'completed');
+
+      // Save stage data to analysis
+      const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
+        req.userId,
+        analysisId,
+        3,
+        stageData
+      );
+
+      if (!updatedAnalysis) {
+        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
+      }
+
+      // Return the stage data
+      res.json({
+        stageNumber: 3,
+        stageName: 'MVP Launch Planning',
+        content: stage3Content,
+        generatedAt: stageData.generatedAt,
+        nextStage: 4
+      });
+
+    } catch (error) {
+      console.error("Stage 3 generation failed:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/stages/4 - Generate Stage 4 (Demand Testing Strategy)
+  app.post("/api/business-analyses/:id/stages/4", rateLimit, async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/stages/4 hit", { id: req.params.id });
+    try {
+      const analysisId = req.params.id;
+      
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Get the analysis
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Validate that analysis has required data
+      if (!analysis.structured) {
+        throw new AppError(
+          "Analysis does not have structured data required for stage generation", 
+          400, 
+          'BAD_REQUEST',
+          'This analysis does not contain the structured data needed to generate stages.'
+        );
+      }
+
+      // Import WorkflowService dynamically to avoid circular dependencies
+      const { WorkflowService } = await import('./services/workflow');
+      const workflowService = new WorkflowService(minimalStorage);
+
+      // Validate stage progression - Stage 3 must be completed first
+      const progressionCheck = await workflowService.validateStageProgression(
+        req.userId,
+        analysisId,
+        4
+      );
+
+      if (!progressionCheck.valid) {
+        throw new AppError(
+          progressionCheck.reason || "Cannot progress to Stage 4",
+          400,
+          'BAD_REQUEST',
+          progressionCheck.reason || "Stage 3 must be completed before accessing Stage 4"
+        );
+      }
+
+      // Check for at least one AI provider API key
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
+        throw new AppError(
+          "At least one AI provider API key is required", 
+          500, 
+          'CONFIG_MISSING',
+          'AI service is not configured. Please contact support.'
+        );
+      }
+
+      // Create AI provider service
+      let aiProvider: AIProviderService;
+      if (process.env.GROK_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
+      } else if (process.env.GEMINI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
+      } else if (process.env.OPENAI_API_KEY) {
+        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
+      } else {
+        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
+      }
+
+      // Get Stage 4 prompt
+      const { prompt, systemPrompt } = workflowService.getStage4Prompt(analysis);
+
+      // Define Stage 4 schema
+      const stage4Schema = {
+        type: "object",
+        properties: {
+          testingMethods: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                method: { type: "string" },
+                description: { type: "string" },
+                cost: { type: "string" },
+                timeline: { type: "string" }
+              },
+              required: ["method", "description", "cost", "timeline"]
+            },
+            minItems: 3,
+            maxItems: 5
+          },
+          successMetrics: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                metric: { type: "string" },
+                target: { type: "string" },
+                measurement: { type: "string" }
+              },
+              required: ["metric", "target", "measurement"]
+            },
+            minItems: 3,
+            maxItems: 5
+          },
+          budget: {
+            type: "object",
+            properties: {
+              total: { type: "string" },
+              breakdown: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    item: { type: "string" },
+                    cost: { type: "string" }
+                  },
+                  required: ["item", "cost"]
+                }
+              }
+            },
+            required: ["total", "breakdown"]
+          },
+          timeline: { type: "string" }
+        },
+        required: ["testingMethods", "successMetrics", "budget", "timeline"]
+      };
+
+      // Generate Stage 4 content
+      let stage4Content: any;
+      try {
+        stage4Content = await aiProvider.generateStructuredContent(prompt, stage4Schema, systemPrompt);
+      } catch (aiError) {
+        console.error("AI generation failed for Stage 4:", aiError);
+        throw new AppError(
+          "Failed to generate Stage 4 content",
+          502,
+          'AI_PROVIDER_DOWN',
+          'AI service failed to generate the Demand Testing Strategy. Please try again.'
+        );
+      }
+
+      // Validate Stage 4 content with Zod
+      const { stage4ContentSchema } = await import('@shared/schema');
+      try {
+        stage4Content = stage4ContentSchema.parse(stage4Content);
+      } catch (validationError) {
+        console.error("Stage 4 content validation failed:", validationError);
+        throw new AppError(
+          "Generated Stage 4 content is invalid",
+          502,
+          'AI_VALIDATION_ERROR',
+          'The AI generated invalid data. Please try again.'
+        );
+      }
+
+      // Create stage data object
+      const stageData = workflowService.createStageData(4, stage4Content, 'completed');
+
+      // Save stage data to analysis
+      const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
+        req.userId,
+        analysisId,
+        4,
+        stageData
+      );
+
+      if (!updatedAnalysis) {
+        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
+      }
+
+      // Return the stage data
+      res.json({
+        stageNumber: 4,
+        stageName: 'Demand Testing Strategy',
+        content: stage4Content,
+        generatedAt: stageData.generatedAt,
+        nextStage: 5
+      });
+
+    } catch (error) {
+      console.error("Stage 4 generation failed:", error);
       next(error);
     }
   });

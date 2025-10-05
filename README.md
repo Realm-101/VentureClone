@@ -77,7 +77,7 @@ Session Storage: Persistent sessions stored in database for reliability across s
 ### AI Provider Integration
 
 **Multi-Provider Architecture** with automatic fallback:
-- **Primary**: Google Gemini (gemini-2.0-flash-exp) for enhanced analysis
+- **Primary**: Google Gemini (gemini-2.5-flash) for enhanced analysis
 - **Fallback**: Grok (grok-2-1212) for reliability
 - **Optional**: OpenAI (gpt-4o) for additional coverage
 

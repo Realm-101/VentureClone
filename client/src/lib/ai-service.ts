@@ -9,7 +9,7 @@ export class AIService {
         apiKey
       });
       const data = await response.json();
-      return data.connected;
+      return data.success;
     } catch (error) {
       return false;
     }
