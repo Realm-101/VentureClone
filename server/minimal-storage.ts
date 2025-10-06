@@ -1,5 +1,35 @@
 import { randomUUID } from "crypto";
-import { type StructuredAnalysis, type EnhancedStructuredAnalysis, type FirstPartyData, type BusinessImprovement } from "@shared/schema";
+import { 
+  type StructuredAnalysis, 
+  type EnhancedStructuredAnalysis, 
+  type FirstPartyData, 
+  type BusinessImprovement,
+  type Stage2Content,
+  type Stage3Content,
+  type Stage4Content,
+  type Stage5Content,
+  type Stage6Content
+} from "@shared/schema";
+
+// Stage data interface with proper typing
+export interface StageData {
+  stageNumber: number;
+  stageName: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  content: Stage2Content | Stage3Content | Stage4Content | Stage5Content | Stage6Content | null;
+  generatedAt: string;
+  completedAt?: string;
+}
+
+// Stages record type for type-safe stage storage
+export type StagesRecord = {
+  1?: StageData;
+  2?: StageData;
+  3?: StageData;
+  4?: StageData;
+  5?: StageData;
+  6?: StageData;
+};
 
 // Data types for minimal venture analysis
 export interface AnalysisRecord {
@@ -12,8 +42,8 @@ export interface AnalysisRecord {
   structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
   firstPartyData?: FirstPartyData;
   improvements?: BusinessImprovement;
-  // Workflow stage data
-  stages?: Record<number, any>;
+  // Workflow stage data with proper typing
+  stages?: StagesRecord;
   currentStage?: number;
   completedStages?: number[];
   // Legacy fields for UI compatibility
@@ -42,8 +72,8 @@ export interface IStorage {
   deleteAnalysis(userId: string, id: string): Promise<void>;
   updateAnalysisImprovements(userId: string, id: string, improvements: BusinessImprovement): Promise<AnalysisRecord | null>;
   getAnalysisImprovements(userId: string, id: string): Promise<BusinessImprovement | null>;
-  updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: any): Promise<AnalysisRecord | null>;
-  getAnalysisStages(userId: string, id: string): Promise<Record<number, any> | null>;
+  updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: StageData): Promise<AnalysisRecord | null>;
+  getAnalysisStages(userId: string, id: string): Promise<StagesRecord | null>;
 }
 
 // In-memory storage implementation using Map for immediate deployment
@@ -188,7 +218,7 @@ export class MemStorage implements IStorage {
     return analysis?.improvements || null;
   }
 
-  async updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: any): Promise<AnalysisRecord | null> {
+  async updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: StageData): Promise<AnalysisRecord | null> {
     const userAnalyses = this.analyses.get(userId) || [];
     const analysisIndex = userAnalyses.findIndex(analysis => analysis.id === id);
     
@@ -206,31 +236,62 @@ export class MemStorage implements IStorage {
       analysis.stages = {};
     }
 
+    // Preserve existing stage data if updating
+    const existingStage = analysis.stages[stageNumber as keyof StagesRecord];
+    
+    // Build updated stage data with proper typing
+    const updatedStageData: StageData = {
+      stageNumber: stageData.stageNumber,
+      stageName: stageData.stageName,
+      status: stageData.status,
+      content: stageData.content,
+      // Preserve original generatedAt timestamp if it exists
+      generatedAt: existingStage?.generatedAt || stageData.generatedAt,
+    };
+
+    // Add completedAt only if status is completed
+    if (stageData.status === 'completed') {
+      updatedStageData.completedAt = stageData.completedAt || new Date().toISOString();
+    } else if (existingStage?.completedAt) {
+      updatedStageData.completedAt = existingStage.completedAt;
+    }
+
     // Update the stage data
-    analysis.stages[stageNumber] = stageData;
+    analysis.stages[stageNumber as keyof StagesRecord] = updatedStageData;
 
     // Update completedStages array
+    if (!analysis.completedStages) {
+      analysis.completedStages = [];
+    }
+
     if (stageData.status === 'completed') {
-      if (!analysis.completedStages) {
-        analysis.completedStages = [];
-      }
       if (!analysis.completedStages.includes(stageNumber)) {
         analysis.completedStages.push(stageNumber);
         analysis.completedStages.sort((a, b) => a - b);
       }
+    } else if (stageData.status === 'failed' || stageData.status === 'pending') {
+      // Remove from completedStages if status changed to failed or pending
+      analysis.completedStages = analysis.completedStages.filter(s => s !== stageNumber);
     }
 
-    // Update currentStage to the next stage
-    const maxCompleted = analysis.completedStages ? Math.max(...analysis.completedStages) : 0;
+    // Update currentStage to the next incomplete stage
+    const maxCompleted = analysis.completedStages.length > 0 
+      ? Math.max(...analysis.completedStages) 
+      : 0;
     analysis.currentStage = Math.min(maxCompleted + 1, 6);
 
     this.analyses.set(userId, userAnalyses);
     return analysis;
   }
 
-  async getAnalysisStages(userId: string, id: string): Promise<Record<number, any> | null> {
+  async getAnalysisStages(userId: string, id: string): Promise<StagesRecord | null> {
     const analysis = await this.getAnalysis(userId, id);
-    return analysis?.stages || null;
+    if (!analysis) {
+      return null;
+    }
+
+    // Return stages with proper typing, or empty object if no stages exist
+    return analysis.stages || {};
   }
 }
 
@@ -260,11 +321,11 @@ export class DbStorage implements IStorage {
     throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
   }
 
-  async updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: any): Promise<AnalysisRecord | null> {
+  async updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: StageData): Promise<AnalysisRecord | null> {
     throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
   }
 
-  async getAnalysisStages(userId: string, id: string): Promise<Record<number, any> | null> {
+  async getAnalysisStages(userId: string, id: string): Promise<StagesRecord | null> {
     throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
   }
 }

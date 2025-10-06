@@ -286,3 +286,42 @@ export const stage4ContentSchema = z.object({
 });
 
 export type Stage4Content = z.infer<typeof stage4ContentSchema>;
+
+// Stage 5: Scaling & Growth schema
+export const stage5ContentSchema = z.object({
+  growthChannels: z.array(z.object({
+    channel: z.string(),
+    strategy: z.string(),
+    priority: z.enum(['high', 'medium', 'low']),
+  })).min(3).max(5),
+  milestones: z.array(z.object({
+    milestone: z.string(),
+    timeline: z.string(),
+    metrics: z.array(z.string()).min(3),
+  })).min(3).max(4),
+  resourceScaling: z.array(z.object({
+    phase: z.string(),
+    team: z.array(z.string()),
+    infrastructure: z.string(),
+  })).min(3).max(3),
+});
+
+export type Stage5Content = z.infer<typeof stage5ContentSchema>;
+
+// Stage 6: AI Automation Mapping schema
+export const stage6ContentSchema = z.object({
+  automationOpportunities: z.array(z.object({
+    process: z.string(),
+    tool: z.string(),
+    roi: z.string(),
+    priority: z.number().min(1).max(10),
+  })).min(4).max(6),
+  implementationPlan: z.array(z.object({
+    phase: z.string(),
+    automations: z.array(z.string()).min(3),
+    timeline: z.string(),
+  })).min(3).max(3),
+  estimatedSavings: z.string(),
+});
+
+export type Stage6Content = z.infer<typeof stage6ContentSchema>;

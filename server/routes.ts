@@ -737,12 +737,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/business-analyses/:id/stages/2 - Generate Stage 2 (Lazy-Entrepreneur Filter)
-  app.post("/api/business-analyses/:id/stages/2", rateLimit, async (req, res, next) => {
-    console.log("POST /api/business-analyses/:id/stages/2 hit", { id: req.params.id });
+  // POST /api/business-analyses/:id/stages/:stageNumber - Unified stage generation endpoint
+  // Requirements: 8.1, 8.2, 8.3, 8.4
+  app.post("/api/business-analyses/:id/stages/:stageNumber", rateLimit, async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/stages/:stageNumber hit", { 
+      id: req.params.id, 
+      stageNumber: req.params.stageNumber,
+      regenerate: req.body.regenerate 
+    });
+    
     try {
       const analysisId = req.params.id;
-      
+      const stageNumber = parseInt(req.params.stageNumber || '0', 10);
+      const regenerate = req.body.regenerate === true;
+
+      // Validate stage number (2-6, stage 1 is auto-completed)
+      if (isNaN(stageNumber) || stageNumber < 2 || stageNumber > 6) {
+        throw new AppError(
+          "Invalid stage number. Must be between 2 and 6.", 
+          400, 
+          'BAD_REQUEST',
+          'Stage number must be between 2 and 6. Stage 1 is auto-completed after analysis.'
+        );
+      }
+
       // Validate analysis ID
       if (!analysisId) {
         throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
@@ -755,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Analysis not found", 
           404, 
           'NOT_FOUND',
-          'The requested analysis could not be found.'
+          'The requested analysis could not be found. It may have been deleted or you may not have permission to access it.'
         );
       }
 
@@ -767,6 +785,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'BAD_REQUEST',
           'This analysis does not contain the structured data needed to generate stages.'
         );
+      }
+
+      // Import WorkflowService
+      const { WorkflowService } = await import('./services/workflow');
+      const workflowService = new WorkflowService(minimalStorage);
+
+      // Validate stage progression (unless regenerating)
+      if (!regenerate) {
+        const progressionCheck = await workflowService.validateStageProgression(
+          req.userId,
+          analysisId,
+          stageNumber
+        );
+
+        if (!progressionCheck.valid) {
+          throw new AppError(
+            progressionCheck.reason || 'Cannot progress to this stage',
+            400,
+            'BAD_REQUEST',
+            progressionCheck.reason || 'You must complete previous stages first.'
+          );
+        }
       }
 
       // Check for at least one AI provider API key
@@ -791,470 +831,506 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
       }
 
-      // Import WorkflowService dynamically to avoid circular dependencies
-      const { WorkflowService } = await import('./services/workflow');
-      const workflowService = new WorkflowService(minimalStorage);
+      // Get stage-specific prompt and schema
+      let prompt: string;
+      let systemPrompt: string;
+      let schema: any;
+      let zodSchema: any;
+      let stageName: string;
 
-      // Get Stage 2 prompt
-      const { prompt, systemPrompt } = workflowService.getStage2Prompt(analysis);
+      // Import all stage schemas
+      const { 
+        stage2ContentSchema, 
+        stage3ContentSchema, 
+        stage4ContentSchema, 
+        stage5ContentSchema, 
+        stage6ContentSchema 
+      } = await import('@shared/schema');
 
-      // Define Stage 2 schema
-      const stage2Schema = {
-        type: "object",
-        properties: {
-          effortScore: { type: "number", minimum: 1, maximum: 10 },
-          rewardScore: { type: "number", minimum: 1, maximum: 10 },
-          recommendation: { type: "string", enum: ["go", "no-go", "maybe"] },
-          reasoning: { type: "string" },
-          automationPotential: {
+      // Route to appropriate stage generator
+      switch (stageNumber) {
+        case 2:
+          ({ prompt, systemPrompt } = workflowService.getStage2Prompt(analysis));
+          zodSchema = stage2ContentSchema;
+          stageName = 'Lazy-Entrepreneur Filter';
+          schema = {
             type: "object",
             properties: {
-              score: { type: "number", minimum: 0, maximum: 1 },
-              opportunities: { type: "array", items: { type: "string" } }
-            },
-            required: ["score", "opportunities"]
-          },
-          resourceRequirements: {
-            type: "object",
-            properties: {
-              time: { type: "string" },
-              money: { type: "string" },
-              skills: { type: "array", items: { type: "string" } }
-            },
-            required: ["time", "money", "skills"]
-          },
-          nextSteps: { type: "array", items: { type: "string" } }
-        },
-        required: ["effortScore", "rewardScore", "recommendation", "reasoning", "automationPotential", "resourceRequirements", "nextSteps"]
-      };
-
-      // Generate Stage 2 content
-      let stage2Content: any;
-      try {
-        stage2Content = await aiProvider.generateStructuredContent(prompt, stage2Schema, systemPrompt);
-      } catch (aiError) {
-        console.error("AI generation failed for Stage 2:", aiError);
-        throw new AppError(
-          "Failed to generate Stage 2 content",
-          502,
-          'AI_PROVIDER_DOWN',
-          'AI service failed to generate the Lazy-Entrepreneur Filter. Please try again.'
-        );
-      }
-
-      // Validate Stage 2 content with Zod
-      const { stage2ContentSchema } = await import('@shared/schema');
-      try {
-        stage2Content = stage2ContentSchema.parse(stage2Content);
-      } catch (validationError) {
-        console.error("Stage 2 content validation failed:", validationError);
-        throw new AppError(
-          "Generated Stage 2 content is invalid",
-          502,
-          'AI_VALIDATION_ERROR',
-          'The AI generated invalid data. Please try again.'
-        );
-      }
-
-      // Create stage data object
-      const stageData = workflowService.createStageData(2, stage2Content, 'completed');
-
-      // Save stage data to analysis
-      const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
-        req.userId,
-        analysisId,
-        2,
-        stageData
-      );
-
-      if (!updatedAnalysis) {
-        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
-      }
-
-      // Return the stage data
-      res.json({
-        stageNumber: 2,
-        stageName: 'Lazy-Entrepreneur Filter',
-        content: stage2Content,
-        generatedAt: stageData.generatedAt,
-        nextStage: 3
-      });
-
-    } catch (error) {
-      console.error("Stage 2 generation failed:", error);
-      next(error);
-    }
-  });
-
-  // POST /api/business-analyses/:id/stages/3 - Generate Stage 3 (MVP Launch Planning)
-  app.post("/api/business-analyses/:id/stages/3", rateLimit, async (req, res, next) => {
-    console.log("POST /api/business-analyses/:id/stages/3 hit", { id: req.params.id });
-    try {
-      const analysisId = req.params.id;
-      
-      // Validate analysis ID
-      if (!analysisId) {
-        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
-      }
-
-      // Get the analysis
-      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
-      if (!analysis) {
-        throw new AppError(
-          "Analysis not found", 
-          404, 
-          'NOT_FOUND',
-          'The requested analysis could not be found.'
-        );
-      }
-
-      // Validate that analysis has required data
-      if (!analysis.structured) {
-        throw new AppError(
-          "Analysis does not have structured data required for stage generation", 
-          400, 
-          'BAD_REQUEST',
-          'This analysis does not contain the structured data needed to generate stages.'
-        );
-      }
-
-      // Import WorkflowService dynamically to avoid circular dependencies
-      const { WorkflowService } = await import('./services/workflow');
-      const workflowService = new WorkflowService(minimalStorage);
-
-      // Validate stage progression - Stage 2 must be completed first
-      const progressionCheck = await workflowService.validateStageProgression(
-        req.userId,
-        analysisId,
-        3
-      );
-
-      if (!progressionCheck.valid) {
-        throw new AppError(
-          progressionCheck.reason || "Cannot progress to Stage 3",
-          400,
-          'BAD_REQUEST',
-          progressionCheck.reason || "Stage 2 must be completed before accessing Stage 3"
-        );
-      }
-
-      // Check for at least one AI provider API key
-      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
-        throw new AppError(
-          "At least one AI provider API key is required", 
-          500, 
-          'CONFIG_MISSING',
-          'AI service is not configured. Please contact support.'
-        );
-      }
-
-      // Create AI provider service
-      let aiProvider: AIProviderService;
-      if (process.env.GROK_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
-      } else if (process.env.GEMINI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
-      } else if (process.env.OPENAI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
-      } else {
-        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
-      }
-
-      // Get Stage 3 prompt
-      const { prompt, systemPrompt } = workflowService.getStage3Prompt(analysis);
-
-      // Define Stage 3 schema
-      const stage3Schema = {
-        type: "object",
-        properties: {
-          coreFeatures: { 
-            type: "array", 
-            items: { type: "string" },
-            minItems: 3,
-            maxItems: 5
-          },
-          niceToHaves: { 
-            type: "array", 
-            items: { type: "string" },
-            minItems: 3,
-            maxItems: 5
-          },
-          techStack: {
-            type: "object",
-            properties: {
-              frontend: { type: "array", items: { type: "string" }, minItems: 1 },
-              backend: { type: "array", items: { type: "string" }, minItems: 1 },
-              infrastructure: { type: "array", items: { type: "string" }, minItems: 1 }
-            },
-            required: ["frontend", "backend", "infrastructure"]
-          },
-          timeline: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                phase: { type: "string" },
-                duration: { type: "string" },
-                deliverables: { type: "array", items: { type: "string" }, minItems: 3 }
+              effortScore: { type: "number", minimum: 1, maximum: 10 },
+              rewardScore: { type: "number", minimum: 1, maximum: 10 },
+              recommendation: { type: "string", enum: ["go", "no-go", "maybe"] },
+              reasoning: { type: "string" },
+              automationPotential: {
+                type: "object",
+                properties: {
+                  score: { type: "number", minimum: 0, maximum: 1 },
+                  opportunities: { type: "array", items: { type: "string" } }
+                },
+                required: ["score", "opportunities"]
               },
-              required: ["phase", "duration", "deliverables"]
-            },
-            minItems: 3,
-            maxItems: 4
-          },
-          estimatedCost: { type: "string" }
-        },
-        required: ["coreFeatures", "niceToHaves", "techStack", "timeline", "estimatedCost"]
-      };
-
-      // Generate Stage 3 content
-      let stage3Content: any;
-      try {
-        stage3Content = await aiProvider.generateStructuredContent(prompt, stage3Schema, systemPrompt);
-      } catch (aiError) {
-        console.error("AI generation failed for Stage 3:", aiError);
-        throw new AppError(
-          "Failed to generate Stage 3 content",
-          502,
-          'AI_PROVIDER_DOWN',
-          'AI service failed to generate the MVP Launch Plan. Please try again.'
-        );
-      }
-
-      // Validate Stage 3 content with Zod
-      const { stage3ContentSchema } = await import('@shared/schema');
-      try {
-        stage3Content = stage3ContentSchema.parse(stage3Content);
-      } catch (validationError) {
-        console.error("Stage 3 content validation failed:", validationError);
-        throw new AppError(
-          "Generated Stage 3 content is invalid",
-          502,
-          'AI_VALIDATION_ERROR',
-          'The AI generated invalid data. Please try again.'
-        );
-      }
-
-      // Create stage data object
-      const stageData = workflowService.createStageData(3, stage3Content, 'completed');
-
-      // Save stage data to analysis
-      const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
-        req.userId,
-        analysisId,
-        3,
-        stageData
-      );
-
-      if (!updatedAnalysis) {
-        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
-      }
-
-      // Return the stage data
-      res.json({
-        stageNumber: 3,
-        stageName: 'MVP Launch Planning',
-        content: stage3Content,
-        generatedAt: stageData.generatedAt,
-        nextStage: 4
-      });
-
-    } catch (error) {
-      console.error("Stage 3 generation failed:", error);
-      next(error);
-    }
-  });
-
-  // POST /api/business-analyses/:id/stages/4 - Generate Stage 4 (Demand Testing Strategy)
-  app.post("/api/business-analyses/:id/stages/4", rateLimit, async (req, res, next) => {
-    console.log("POST /api/business-analyses/:id/stages/4 hit", { id: req.params.id });
-    try {
-      const analysisId = req.params.id;
-      
-      // Validate analysis ID
-      if (!analysisId) {
-        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
-      }
-
-      // Get the analysis
-      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
-      if (!analysis) {
-        throw new AppError(
-          "Analysis not found", 
-          404, 
-          'NOT_FOUND',
-          'The requested analysis could not be found.'
-        );
-      }
-
-      // Validate that analysis has required data
-      if (!analysis.structured) {
-        throw new AppError(
-          "Analysis does not have structured data required for stage generation", 
-          400, 
-          'BAD_REQUEST',
-          'This analysis does not contain the structured data needed to generate stages.'
-        );
-      }
-
-      // Import WorkflowService dynamically to avoid circular dependencies
-      const { WorkflowService } = await import('./services/workflow');
-      const workflowService = new WorkflowService(minimalStorage);
-
-      // Validate stage progression - Stage 3 must be completed first
-      const progressionCheck = await workflowService.validateStageProgression(
-        req.userId,
-        analysisId,
-        4
-      );
-
-      if (!progressionCheck.valid) {
-        throw new AppError(
-          progressionCheck.reason || "Cannot progress to Stage 4",
-          400,
-          'BAD_REQUEST',
-          progressionCheck.reason || "Stage 3 must be completed before accessing Stage 4"
-        );
-      }
-
-      // Check for at least one AI provider API key
-      if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GROK_API_KEY) {
-        throw new AppError(
-          "At least one AI provider API key is required", 
-          500, 
-          'CONFIG_MISSING',
-          'AI service is not configured. Please contact support.'
-        );
-      }
-
-      // Create AI provider service
-      let aiProvider: AIProviderService;
-      if (process.env.GROK_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
-      } else if (process.env.GEMINI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
-      } else if (process.env.OPENAI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
-      } else {
-        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
-      }
-
-      // Get Stage 4 prompt
-      const { prompt, systemPrompt } = workflowService.getStage4Prompt(analysis);
-
-      // Define Stage 4 schema
-      const stage4Schema = {
-        type: "object",
-        properties: {
-          testingMethods: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                method: { type: "string" },
-                description: { type: "string" },
-                cost: { type: "string" },
-                timeline: { type: "string" }
+              resourceRequirements: {
+                type: "object",
+                properties: {
+                  time: { type: "string" },
+                  money: { type: "string" },
+                  skills: { type: "array", items: { type: "string" } }
+                },
+                required: ["time", "money", "skills"]
               },
-              required: ["method", "description", "cost", "timeline"]
+              nextSteps: { type: "array", items: { type: "string" } }
             },
-            minItems: 3,
-            maxItems: 5
-          },
-          successMetrics: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                metric: { type: "string" },
-                target: { type: "string" },
-                measurement: { type: "string" }
-              },
-              required: ["metric", "target", "measurement"]
-            },
-            minItems: 3,
-            maxItems: 5
-          },
-          budget: {
+            required: ["effortScore", "rewardScore", "recommendation", "reasoning", "automationPotential", "resourceRequirements", "nextSteps"]
+          };
+          break;
+
+        case 3:
+          ({ prompt, systemPrompt } = workflowService.getStage3Prompt(analysis));
+          zodSchema = stage3ContentSchema;
+          stageName = 'MVP Launch Planning';
+          schema = {
             type: "object",
             properties: {
-              total: { type: "string" },
-              breakdown: {
+              coreFeatures: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 },
+              niceToHaves: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 },
+              techStack: {
+                type: "object",
+                properties: {
+                  frontend: { type: "array", items: { type: "string" }, minItems: 1 },
+                  backend: { type: "array", items: { type: "string" }, minItems: 1 },
+                  infrastructure: { type: "array", items: { type: "string" }, minItems: 1 }
+                },
+                required: ["frontend", "backend", "infrastructure"]
+              },
+              timeline: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    item: { type: "string" },
-                    cost: { type: "string" }
+                    phase: { type: "string" },
+                    duration: { type: "string" },
+                    deliverables: { type: "array", items: { type: "string" }, minItems: 3 }
                   },
-                  required: ["item", "cost"]
-                }
+                  required: ["phase", "duration", "deliverables"]
+                },
+                minItems: 3,
+                maxItems: 4
+              },
+              estimatedCost: { type: "string" }
+            },
+            required: ["coreFeatures", "niceToHaves", "techStack", "timeline", "estimatedCost"]
+          };
+          break;
+
+        case 4:
+          ({ prompt, systemPrompt } = workflowService.getStage4Prompt(analysis));
+          zodSchema = stage4ContentSchema;
+          stageName = 'Demand Testing Strategy';
+          schema = {
+            type: "object",
+            properties: {
+              testingMethods: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    method: { type: "string" },
+                    description: { type: "string" },
+                    cost: { type: "string" },
+                    timeline: { type: "string" }
+                  },
+                  required: ["method", "description", "cost", "timeline"]
+                },
+                minItems: 3,
+                maxItems: 5
+              },
+              successMetrics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    metric: { type: "string" },
+                    target: { type: "string" },
+                    measurement: { type: "string" }
+                  },
+                  required: ["metric", "target", "measurement"]
+                },
+                minItems: 3,
+                maxItems: 5
+              },
+              budget: {
+                type: "object",
+                properties: {
+                  total: { type: "string" },
+                  breakdown: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        item: { type: "string" },
+                        cost: { type: "string" }
+                      },
+                      required: ["item", "cost"]
+                    }
+                  }
+                },
+                required: ["total", "breakdown"]
+              },
+              timeline: { type: "string" }
+            },
+            required: ["testingMethods", "successMetrics", "budget", "timeline"]
+          };
+          break;
+
+        case 5:
+          ({ prompt, systemPrompt } = workflowService.getStage5Prompt(analysis));
+          zodSchema = stage5ContentSchema;
+          stageName = 'Scaling & Growth';
+          schema = {
+            type: "object",
+            properties: {
+              growthChannels: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    channel: { type: "string" },
+                    strategy: { type: "string" },
+                    priority: { type: "string", enum: ["high", "medium", "low"] }
+                  },
+                  required: ["channel", "strategy", "priority"]
+                },
+                minItems: 3,
+                maxItems: 5
+              },
+              milestones: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    milestone: { type: "string" },
+                    timeline: { type: "string" },
+                    metrics: { type: "array", items: { type: "string" }, minItems: 3 }
+                  },
+                  required: ["milestone", "timeline", "metrics"]
+                },
+                minItems: 3,
+                maxItems: 4
+              },
+              resourceScaling: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    phase: { type: "string" },
+                    team: { type: "array", items: { type: "string" } },
+                    infrastructure: { type: "string" }
+                  },
+                  required: ["phase", "team", "infrastructure"]
+                },
+                minItems: 3,
+                maxItems: 3
               }
             },
-            required: ["total", "breakdown"]
-          },
-          timeline: { type: "string" }
-        },
-        required: ["testingMethods", "successMetrics", "budget", "timeline"]
-      };
+            required: ["growthChannels", "milestones", "resourceScaling"]
+          };
+          break;
 
-      // Generate Stage 4 content
-      let stage4Content: any;
-      try {
-        stage4Content = await aiProvider.generateStructuredContent(prompt, stage4Schema, systemPrompt);
-      } catch (aiError) {
-        console.error("AI generation failed for Stage 4:", aiError);
+        case 6:
+          ({ prompt, systemPrompt } = workflowService.getStage6Prompt(analysis));
+          zodSchema = stage6ContentSchema;
+          stageName = 'AI Automation Mapping';
+          schema = {
+            type: "object",
+            properties: {
+              automationOpportunities: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    process: { type: "string" },
+                    tool: { type: "string" },
+                    roi: { type: "string" },
+                    priority: { type: "number", minimum: 1, maximum: 10 }
+                  },
+                  required: ["process", "tool", "roi", "priority"]
+                },
+                minItems: 4,
+                maxItems: 6
+              },
+              implementationPlan: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    phase: { type: "string" },
+                    automations: { type: "array", items: { type: "string" }, minItems: 3 },
+                    timeline: { type: "string" }
+                  },
+                  required: ["phase", "automations", "timeline"]
+                },
+                minItems: 3,
+                maxItems: 3
+              },
+              estimatedSavings: { type: "string" }
+            },
+            required: ["automationOpportunities", "implementationPlan", "estimatedSavings"]
+          };
+          break;
+
+        default:
+          throw new AppError("Invalid stage number", 400, 'BAD_REQUEST');
+      }
+
+      // Generate stage content with retry logic (Requirements: 9.1, 9.2, 9.3, 9.4)
+      const { retryWithBackoff, generateErrorGuidance, createPartialResultHandler } = await import('./lib/retry');
+      
+      // Create partial result handler for saving progress
+      const partialHandler = createPartialResultHandler<any>(`stage-${analysisId}-${stageNumber}`);
+      
+      let stageContent: any;
+      console.log(`Generating Stage ${stageNumber} content with retry logic...`);
+      
+      const retryResult = await retryWithBackoff(
+        async () => {
+          const content = await aiProvider.generateStructuredContent(prompt, schema, systemPrompt);
+          
+          // Save partial result in case of later failure
+          await partialHandler.save(content);
+          
+          return content;
+        },
+        {
+          maxAttempts: 3,
+          delayMs: 2000,
+          backoffMultiplier: 2,
+          maxDelayMs: 10000,
+          onRetry: (error, attempt) => {
+            console.log(`Retry attempt ${attempt} for Stage ${stageNumber} after error:`, error.message);
+          },
+        }
+      );
+
+      if (!retryResult.success) {
+        console.error(`AI generation failed for Stage ${stageNumber} after ${retryResult.attempts} attempts:`, retryResult.error);
+        
+        // Generate user-friendly error guidance
+        const guidance = generateErrorGuidance(
+          retryResult.error!,
+          `generating ${stageName}`
+        );
+        
+        // Try to load partial result if available
+        const partialResult = await partialHandler.load();
+        if (partialResult && Object.keys(partialResult).length > 0) {
+          console.log(`Partial result available for Stage ${stageNumber}, but incomplete`);
+        }
+        
+        // Determine appropriate error code
+        let statusCode = 502;
+        let errorCode = 'AI_PROVIDER_DOWN';
+        
+        if (guidance.error.message.includes('timeout')) {
+          statusCode = 504;
+          errorCode = 'GATEWAY_TIMEOUT';
+        } else if (guidance.error.message.includes('rate limit') || guidance.error.message.includes('quota')) {
+          statusCode = 429;
+          errorCode = 'RATE_LIMITED';
+        }
+        
         throw new AppError(
-          "Failed to generate Stage 4 content",
-          502,
-          'AI_PROVIDER_DOWN',
-          'AI service failed to generate the Demand Testing Strategy. Please try again.'
+          `Failed to generate Stage ${stageNumber} content after ${retryResult.attempts} attempts`,
+          statusCode,
+          errorCode,
+          guidance.userMessage,
+          undefined,
+          {
+            stageNumber,
+            analysisId,
+            attempts: retryResult.attempts,
+            totalTimeMs: retryResult.totalTimeMs,
+            nextSteps: guidance.nextSteps,
+            retryable: guidance.retryable,
+            estimatedWaitTime: guidance.estimatedWaitTime,
+            error: guidance.error.message,
+          },
+          guidance.retryable
         );
       }
 
-      // Validate Stage 4 content with Zod
-      const { stage4ContentSchema } = await import('@shared/schema');
+      stageContent = retryResult.data;
+      console.log(`Stage ${stageNumber} content generated successfully after ${retryResult.attempts} attempt(s) in ${retryResult.totalTimeMs}ms`);
+      
+      // Clear partial result on success
+      await partialHandler.clear();
+
+      // Validate stage content with Zod
       try {
-        stage4Content = stage4ContentSchema.parse(stage4Content);
+        stageContent = zodSchema.parse(stageContent);
+        console.log(`Stage ${stageNumber} content validated successfully`);
       } catch (validationError) {
-        console.error("Stage 4 content validation failed:", validationError);
+        console.error(`Stage ${stageNumber} content validation failed:`, validationError);
         throw new AppError(
-          "Generated Stage 4 content is invalid",
+          `Generated Stage ${stageNumber} content is invalid`,
           502,
           'AI_VALIDATION_ERROR',
-          'The AI generated invalid data. Please try again.'
+          'The AI generated invalid data. Please try again.',
+          undefined,
+          { stageNumber, analysisId, validationError: validationError instanceof Error ? validationError.message : 'Unknown' }
+        );
+      }
+
+      // Additional validation and quality checks (Requirements: 10.1, 10.2, 10.3, 10.4)
+      const { ValidationService } = await import('./services/validation');
+      const validationService = new ValidationService();
+      
+      const businessContext = {
+        url: analysis.url,
+        ...(analysis.businessModel && { businessModel: analysis.businessModel })
+      };
+      
+      const validationResult = validationService.validateStageContent(
+        stageNumber,
+        stageContent,
+        businessContext
+      );
+
+      // Log validation results
+      console.log(`Stage ${stageNumber} validation score: ${(validationResult.overallScore * 100).toFixed(1)}%`);
+      
+      if (validationResult.structureValidation.warnings.length > 0) {
+        console.warn(`Stage ${stageNumber} structure warnings:`, validationResult.structureValidation.warnings);
+      }
+      
+      if (validationResult.specificityValidation.warnings.length > 0) {
+        console.warn(`Stage ${stageNumber} specificity warnings:`, validationResult.specificityValidation.warnings);
+      }
+      
+      if (!validationResult.actionableCheck.passed) {
+        console.warn(`Stage ${stageNumber} actionable check issues:`, validationResult.actionableCheck.issues);
+      }
+      
+      if (!validationResult.placeholderCheck.passed) {
+        console.warn(`Stage ${stageNumber} placeholder check issues:`, validationResult.placeholderCheck.issues);
+      }
+      
+      if (!validationResult.estimatesCheck.passed) {
+        console.warn(`Stage ${stageNumber} estimates check issues:`, validationResult.estimatesCheck.issues);
+      }
+
+      // If validation fails critically, throw error
+      if (!validationResult.valid) {
+        const allErrors = [
+          ...validationResult.structureValidation.errors,
+          ...validationResult.fieldsValidation.errors,
+          ...validationResult.specificityValidation.errors
+        ];
+        
+        console.error(`Stage ${stageNumber} quality validation failed:`, allErrors);
+        throw new AppError(
+          `Generated Stage ${stageNumber} content failed quality checks`,
+          502,
+          'AI_QUALITY_ERROR',
+          'The AI generated content that did not meet quality standards. Please try again.',
+          undefined,
+          { 
+            stageNumber, 
+            analysisId, 
+            validationScore: validationResult.overallScore,
+            errors: allErrors.slice(0, 3) // Include first 3 errors
+          }
         );
       }
 
       // Create stage data object
-      const stageData = workflowService.createStageData(4, stage4Content, 'completed');
+      const stageData = workflowService.createStageData(stageNumber, stageContent, 'completed');
 
       // Save stage data to analysis
       const updatedAnalysis = await minimalStorage.updateAnalysisStageData(
         req.userId,
         analysisId,
-        4,
+        stageNumber,
         stageData
       );
 
       if (!updatedAnalysis) {
-        throw new AppError("Failed to save stage data", 500, 'INTERNAL');
+        throw new AppError(
+          "Failed to save stage data", 
+          500, 
+          'INTERNAL',
+          'Could not save the generated stage data. Please try again.'
+        );
       }
+
+      // Determine next stage
+      const nextStage = stageNumber < 6 ? stageNumber + 1 : null;
 
       // Return the stage data
       res.json({
-        stageNumber: 4,
-        stageName: 'Demand Testing Strategy',
-        content: stage4Content,
+        stageNumber,
+        stageName,
+        content: stageContent,
         generatedAt: stageData.generatedAt,
-        nextStage: 5
+        nextStage
       });
 
     } catch (error) {
-      console.error("Stage 4 generation failed:", error);
+      console.error(`Stage ${req.params.stageNumber || 'unknown'} generation failed:`, error);
       next(error);
     }
   });
+
+  // GET /api/business-analyses/:id/stages - Get all stage data for an analysis
+  // Requirement: 8.2
+  app.get("/api/business-analyses/:id/stages", async (req, res, next) => {
+    console.log("GET /api/business-analyses/:id/stages hit", { id: req.params.id });
+    
+    try {
+      const analysisId = req.params.id;
+
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Get the analysis
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found. It may have been deleted or you may not have permission to access it.'
+        );
+      }
+
+      // Import WorkflowService
+      const { WorkflowService } = await import('./services/workflow');
+      const workflowService = new WorkflowService(minimalStorage);
+
+      // Get stages from analysis (includes auto-completed Stage 1)
+      const stages = analysis.stages || {};
+      
+      // Get progress summary
+      const progressSummary = workflowService.getProgressSummary(stages);
+
+      // Return all stage data with completion status
+      res.json({
+        analysisId,
+        currentStage: progressSummary.currentStage,
+        completedStages: progressSummary.completedStages,
+        totalStages: progressSummary.totalStages,
+        isComplete: progressSummary.isComplete,
+        nextStage: progressSummary.nextStage,
+        stages
+      });
+
+    } catch (error) {
+      console.error("Failed to fetch stages:", error);
+      next(error);
+    }
+  });
+
+  // Old individual stage endpoints removed - now using unified endpoint above
 
   const httpServer = createServer(app);
   return httpServer;
