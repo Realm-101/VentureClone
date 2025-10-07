@@ -118,35 +118,84 @@ export function ExportAnalysis({ analysis, stages = [] }: ExportAnalysisProps) {
     URL.revokeObjectURL(url);
   };
 
-  const generateCSV = () => {
-    const csvContent = [
-      ['Field', 'Value'],
-      ['URL', analysis.url],
-      ['Business Model', analysis.businessModel || ''],
-      ['Revenue Stream', analysis.revenueStream || ''],
-      ['Target Market', analysis.targetMarket || ''],
-      ['Overall Score', analysis.overallScore?.toString() || ''],
-      ['Technical Complexity Score', analysis.scoreDetails?.technicalComplexity.score.toString() || ''],
-      ['Market Opportunity Score', analysis.scoreDetails?.marketOpportunity.score.toString() || ''],
-      ['Competitive Landscape Score', analysis.scoreDetails?.competitiveLandscape.score.toString() || ''],
-      ['Resource Requirements Score', analysis.scoreDetails?.resourceRequirements.score.toString() || ''],
-      ['Time to Market Score', analysis.scoreDetails?.timeToMarket.score.toString() || ''],
-      ['Key Insight', analysis.aiInsights?.keyInsight || ''],
-      ['Risk Factor', analysis.aiInsights?.riskFactor || ''],
-      ['Opportunity', analysis.aiInsights?.opportunity || ''],
-      ['Current Stage', analysis.currentStage.toString()],
-      ['Created At', new Date(analysis.createdAt).toLocaleString()],
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+  const generateCSV = async () => {
+    try {
+      // Use server-side CSV generation for proper handling of complex data
+      const response = await fetch(`/api/business-analyses/${analysis.id}/export-stage1-csv`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analysis-${analysis.id.slice(0, 8)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      if (!response.ok) {
+        throw new Error('Failed to generate CSV');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analysis-${analysis.id.slice(0, 8)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('CSV export error:', error);
+      // Fallback to client-side generation if server fails
+      const csvData = {
+        url: analysis.url,
+        businessModel: analysis.businessModel || '',
+        revenueStream: analysis.revenueStream || '',
+        targetMarket: analysis.targetMarket || '',
+        overallScore: analysis.overallScore || '',
+        scoreDetails: analysis.scoreDetails || {},
+        aiInsights: analysis.aiInsights || {},
+        currentStage: analysis.currentStage,
+        createdAt: new Date(analysis.createdAt).toLocaleString(),
+      };
+      
+      // Simple client-side CSV generation as fallback
+      const escapeCSV = (value: string) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      };
+      
+      const flattenObject = (obj: any, prefix = ''): Record<string, string> => {
+        const result: Record<string, string> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          const newKey = prefix ? `${prefix}.${key}` : key;
+          if (value === null || value === undefined) {
+            result[newKey] = '';
+          } else if (Array.isArray(value)) {
+            result[newKey] = value.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join('; ');
+          } else if (typeof value === 'object') {
+            Object.assign(result, flattenObject(value, newKey));
+          } else {
+            result[newKey] = String(value);
+          }
+        }
+        return result;
+      };
+      
+      const flattened = flattenObject(csvData);
+      const headers = Object.keys(flattened);
+      const values = Object.values(flattened).map(v => escapeCSV(String(v)));
+      const csvContent = [headers.join(','), values.join(',')].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analysis-${analysis.id.slice(0, 8)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   const generateJSON = () => {

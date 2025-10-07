@@ -174,7 +174,7 @@ export class AIProviderService {
     if (!this.geminiClient) throw new Error('Gemini client not initialized');
 
     try {
-      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.5-pro" });
 
       const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
 
@@ -221,7 +221,7 @@ export class AIProviderService {
       // Use JSON mode without schema - Gemini's schema format is different from JSON Schema
       // The prompt itself will guide the structure
       const model = this.geminiClient.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-pro",
         generationConfig: {
           responseMimeType: "application/json",
         },
@@ -276,7 +276,7 @@ export class AIProviderService {
     messages.push({ role: "user", content: prompt });
 
     const response = await this.grokClient.chat.completions.create({
-      model: "grok-2-1212",
+      model: "grok-4-fast-reasoning",
       messages,
     });
 
@@ -309,7 +309,7 @@ export class AIProviderService {
       const startTime = Date.now();
 
       const response = await this.grokClient.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-4-fast-reasoning",
         messages,
         response_format: { type: "json_object" },
       });

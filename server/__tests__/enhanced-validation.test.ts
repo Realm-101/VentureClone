@@ -43,7 +43,8 @@ describe('Enhanced Validation Service', () => {
     });
 
     it('should reject request with invalid URL format', () => {
-      const body = { url: 'not-a-url' };
+      // Use a URL that will fail even after normalization
+      const body = { url: '://invalid' };
       
       expect(() => ValidationService.validateAnalysisRequest(body)).toThrow('Invalid URL');
     });

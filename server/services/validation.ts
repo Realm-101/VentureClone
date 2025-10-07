@@ -62,26 +62,26 @@ export class ValidationService {
 
     const schema = STAGE_SCHEMAS[stageNumber as keyof typeof STAGE_SCHEMAS];
     if (!schema) {
-      warnings.push(No validation schema defined for stage );
+      warnings.push(`No validation schema defined for stage ${stageNumber}`);
       return { valid: true, errors, warnings };
     }
 
     // Check required top-level fields
     for (const field of schema.required) {
       if (!(field in content)) {
-        errors.push(Missing required field: );
+        errors.push(`Missing required field: ${field}`);
       } else if (content[field] === null || content[field] === undefined) {
-        errors.push(Field  cannot be null or undefined);
+        errors.push(`Field ${field} cannot be null or undefined`);
       }
     }
 
     // Check nested required fields
-    if (schema.nested) {
+    if ('nested' in schema && schema.nested) {
       for (const [parent, children] of Object.entries(schema.nested)) {
         if (content[parent] && typeof content[parent] === 'object') {
-          for (const child of children) {
+          for (const child of children as string[]) {
             if (!(child in content[parent])) {
-              errors.push(Missing required nested field: .);
+              errors.push(`Missing required nested field: ${parent}.${child}`);
             }
           }
         }
@@ -112,11 +112,11 @@ export class ValidationService {
     for (const field of schema.required) {
       if (Array.isArray(content[field])) {
         if (content[field].length === 0) {
-          errors.push(Array field  cannot be empty);
+          errors.push(`Array field ${field} cannot be empty`);
         }
       } else if (typeof content[field] === 'string') {
         if (content[field].trim().length === 0) {
-          errors.push(String field  cannot be empty);
+          errors.push(`String field ${field} cannot be empty`);
         }
       }
     }
@@ -153,7 +153,7 @@ export class ValidationService {
 
     for (const placeholder of placeholders) {
       if (contentStr.includes(placeholder)) {
-        warnings.push(Content contains generic placeholder: "");
+        warnings.push(`Content contains generic placeholder: "${placeholder}"`);
       }
     }
 
@@ -165,7 +165,7 @@ export class ValidationService {
       warnings.push('Content does not mention the specific business name');
     }
     
-    if (!contentStr.includes(businessDomain)) {
+    if (businessDomain && !contentStr.includes(businessDomain)) {
       warnings.push('Content does not reference the business domain/URL');
     }
 
@@ -208,7 +208,7 @@ export class ValidationService {
           if (hasActionVerb) {
             actionableCount++;
           } else {
-            issues.push(Recommendation may not be actionable: "...");
+            issues.push(`Recommendation may not be actionable: "${itemStr.substring(0, 50)}..."`);
           }
         }
       }
@@ -237,7 +237,7 @@ export class ValidationService {
     const passed = score >= 0.7; // At least 70% should be actionable
 
     if (!passed) {
-      issues.push(Only % of recommendations are actionable (target: 70%));
+      issues.push(`Only ${(score * 100).toFixed(0)}% of recommendations are actionable (target: 70%)`);
     }
 
     return {
@@ -271,7 +271,7 @@ export class ValidationService {
     for (const pattern of placeholderPatterns) {
       const matches = contentStr.match(pattern);
       if (matches && matches.length > 0) {
-        issues.push(Found  placeholder pattern(s): );
+        issues.push(`Found ${matches.length} placeholder pattern(s): ${matches.slice(0, 3).join(', ')}`);
       }
     }
 
@@ -298,7 +298,7 @@ export class ValidationService {
         if (content.effortScore >= 1 && content.effortScore <= 10) {
           checksPassed++;
         } else {
-          issues.push(Effort score  is out of valid range (1-10));
+          issues.push(`Effort score ${content.effortScore} is out of valid range (1-10)`);
         }
       }
 
@@ -307,7 +307,7 @@ export class ValidationService {
         if (content.rewardScore >= 1 && content.rewardScore <= 10) {
           checksPassed++;
         } else {
-          issues.push(Reward score  is out of valid range (1-10));
+          issues.push(`Reward score ${content.rewardScore} is out of valid range (1-10)`);
         }
       }
 
@@ -316,7 +316,7 @@ export class ValidationService {
         if (content.automationPotential.score >= 0 && content.automationPotential.score <= 1) {
           checksPassed++;
         } else {
-          issues.push(Automation potential score  is out of valid range (0-1));
+          issues.push(`Automation potential score ${content.automationPotential.score} is out of valid range (0-1)`);
         }
       }
 
@@ -358,7 +358,7 @@ export class ValidationService {
             const duration = phase.duration.toLowerCase();
             if (!/\d+\s*(week|month)/.test(duration)) {
               hasRealisticDurations = false;
-              issues.push(Phase "" has vague duration: );
+              issues.push(`Phase "${phase.phase}" has vague duration: ${phase.duration}`);
             }
           }
         }

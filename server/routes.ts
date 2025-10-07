@@ -9,6 +9,7 @@ import { AIProviderService, type AIProvider } from "./services/ai-providers";
 import { fetchFirstParty, fetchFirstPartyWithRetry } from "./lib/fetchFirstParty";
 import { ValidationService } from "./lib/validation";
 import { BusinessImprovementService } from "./services/business-improvement";
+import { ExportService } from "./services/export-service";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -18,6 +19,19 @@ function isValidUrl(string: string): boolean {
   } catch (_) {
     return false;
   }
+}
+
+// Helper function to get the active AI provider based on environment variables
+// Priority: Gemini > Grok > OpenAI (matches workflow generation logic)
+function getActiveAIProvider(): { provider: AIProvider; apiKey: string } | null {
+  if (process.env.GEMINI_API_KEY) {
+    return { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY };
+  } else if (process.env.GROK_API_KEY) {
+    return { provider: 'grok', apiKey: process.env.GROK_API_KEY };
+  } else if (process.env.OPENAI_API_KEY) {
+    return { provider: 'openai', apiKey: process.env.OPENAI_API_KEY };
+  }
+  return null;
 }
 
 
@@ -37,8 +51,8 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
     throw new Error(`${provider.toUpperCase()}_API_KEY missing`);
   }
 
-  // Increase timeout to 30 seconds for more complex analysis
-  const aiService = new AIProviderService(apiKey, provider, 30000);
+  // Increase timeout to 120 seconds for complex analysis with Pro models
+  const aiService = new AIProviderService(apiKey, provider, 120000);
 
   // Use enhanced prompts with evidence-based analysis
   const structuredPrompt = aiService.createEnhancedAnalysisPrompt(url, firstPartyData);
@@ -170,9 +184,9 @@ async function analyzeUrlWithProvider(url: string, provider: AIProvider, firstPa
     // Generate summary from structured data
     const summary = `${validated.overview.valueProposition}\n\nTarget Audience: ${validated.overview.targetAudience}\n\nMonetization: ${validated.overview.monetization}\n\nKey Insights: ${validated.synthesis.keyInsights.join(', ')}`;
     
-    const modelName = provider === 'gemini' ? 'gemini:gemini-2.5-flash' :
+    const modelName = provider === 'gemini' ? 'gemini:gemini-2.5-pro' :
                      provider === 'openai' ? 'openai:gpt-4o' :
-                     'grok:grok-2-1212';
+                     'grok:grok-4-fast-reasoning';
     
     return { content: summary, model: modelName, structured: validated };
   } catch (error) {
@@ -280,6 +294,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/healthz - Health check endpoint
   app.get("/api/healthz", healthzHandler);
   
+  // GET /docs/SCORING_METHODOLOGY.md - Serve scoring methodology documentation
+  app.get("/docs/SCORING_METHODOLOGY.md", async (req, res, next) => {
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const filePath = path.join(process.cwd(), 'docs', 'SCORING_METHODOLOGY.md');
+      const content = await fs.readFile(filePath, 'utf-8');
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.send(content);
+    } catch (error) {
+      console.error('Error serving documentation:', error);
+      next(new AppError('Documentation not found', 404, 'NOT_FOUND'));
+    }
+  });
+  
   // GET /api/ai-providers - List available AI providers based on environment
   app.get("/api/ai-providers", async (req, res, next) => {
     try {
@@ -325,27 +354,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/ai-providers/active - Get the active AI provider
   app.get("/api/ai-providers/active", async (req, res, next) => {
     try {
-      // Temporarily default to Grok while debugging Gemini issues
-      if (process.env.GROK_API_KEY) {
+      const activeProvider = getActiveAIProvider();
+      
+      if (activeProvider) {
         res.json({
-          id: 'grok',
-          provider: 'grok',
-          apiKey: '***',
-          isActive: true,
-          userId: req.userId
-        });
-      } else if (process.env.GEMINI_API_KEY) {
-        res.json({
-          id: 'gemini',
-          provider: 'gemini',
-          apiKey: '***',
-          isActive: true,
-          userId: req.userId
-        });
-      } else if (process.env.OPENAI_API_KEY) {
-        res.json({
-          id: 'openai',
-          provider: 'openai',
+          id: activeProvider.provider,
+          provider: activeProvider.provider,
           apiKey: '***',
           isActive: true,
           userId: req.userId
@@ -629,22 +643,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create AI provider service for improvement generation
-      let aiProvider: AIProviderService;
-      try {
-        // Try Gemini first, then fallback to Grok
-        if (process.env.GEMINI_API_KEY) {
-          aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
-        } else if (process.env.GROK_API_KEY) {
-          aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
-        } else if (process.env.OPENAI_API_KEY) {
-          aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
-        } else {
-          throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
-        }
-      } catch (providerError) {
-        console.error("Failed to create AI provider service:", providerError);
-        throw new AppError("Failed to initialize AI provider", 500, 'INTERNAL');
+      const activeProvider = getActiveAIProvider();
+      if (!activeProvider) {
+        throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
       }
+
+      const aiProvider = new AIProviderService(activeProvider.apiKey, activeProvider.provider, 120000);
 
       // Create business improvement service
       const improvementService = new BusinessImprovementService(aiProvider, {
@@ -737,6 +741,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/business-analyses/:id/improvements/export - Export business improvement plan
+  app.post("/api/business-analyses/:id/improvements/export", rateLimit, async (req, res, next) => {
+    try {
+      const analysisId = req.params.id;
+      const { format } = req.body;
+      
+      if (!req.userId) {
+        throw new AppError("User ID is required", 401, 'UNAUTHORIZED');
+      }
+      const userId: string = req.userId;
+
+      // Validate format
+      if (!['pdf', 'html', 'json'].includes(format)) {
+        throw new AppError(
+          "Invalid export format",
+          400,
+          'BAD_REQUEST',
+          'Export format must be one of: pdf, html, json'
+        );
+      }
+
+      // Get the analysis with improvements
+      const analysis = await minimalStorage.getAnalysis(userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found",
+          404,
+          'NOT_FOUND',
+          'The requested analysis could not be found'
+        );
+      }
+
+      const improvements = await minimalStorage.getAnalysisImprovements(userId, analysisId);
+      if (!improvements) {
+        throw new AppError(
+          "No improvements found",
+          404,
+          'NOT_FOUND',
+          'No improvement plan found for this analysis. Please generate improvements first.'
+        );
+      }
+
+      // Create export service
+      const exportService = new ExportService(minimalStorage);
+
+      // Generate export based on format
+      let exportData: Buffer | string = '';
+      let contentType: string = 'application/json';
+      let filename: string = 'business-improvement-plan.json';
+
+      switch (format) {
+        case 'json':
+          exportData = JSON.stringify(improvements, null, 2);
+          contentType = 'application/json';
+          filename = 'business-improvement-plan.json';
+          break;
+        case 'html':
+          exportData = exportService.generateImprovementHTML(improvements, analysis);
+          contentType = 'text/html';
+          filename = 'business-improvement-plan.html';
+          break;
+        case 'pdf':
+          exportData = await exportService.generateImprovementPDF(improvements, analysis);
+          contentType = 'application/pdf';
+          filename = 'business-improvement-plan.pdf';
+          break;
+      }
+
+      // Set response headers
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Send the export data
+      if (Buffer.isBuffer(exportData)) {
+        res.send(exportData);
+      } else {
+        res.send(exportData);
+      }
+
+    } catch (error) {
+      console.error("Improvement export failed:", error);
+      next(error);
+    }
+  });
+
   // POST /api/business-analyses/:id/stages/:stageNumber - Unified stage generation endpoint
   // Requirements: 8.1, 8.2, 8.3, 8.4
   app.post("/api/business-analyses/:id/stages/:stageNumber", rateLimit, async (req, res, next) => {
@@ -791,22 +880,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { WorkflowService } = await import('./services/workflow');
       const workflowService = new WorkflowService(minimalStorage);
 
-      // Validate stage progression (unless regenerating)
-      if (!regenerate) {
-        const progressionCheck = await workflowService.validateStageProgression(
-          req.userId,
-          analysisId,
-          stageNumber
-        );
+      // Validate stage progression
+      // Pass regenerate flag to allow viewing/regenerating completed stages
+      const progressionCheck = await workflowService.validateStageProgression(
+        req.userId,
+        analysisId,
+        stageNumber,
+        regenerate
+      );
 
-        if (!progressionCheck.valid) {
-          throw new AppError(
-            progressionCheck.reason || 'Cannot progress to this stage',
-            400,
-            'BAD_REQUEST',
-            progressionCheck.reason || 'You must complete previous stages first.'
-          );
-        }
+      if (!progressionCheck.valid) {
+        throw new AppError(
+          progressionCheck.reason || 'Cannot progress to this stage',
+          400,
+          'BAD_REQUEST',
+          progressionCheck.reason || 'You must complete previous stages first.'
+        );
       }
 
       // Check for at least one AI provider API key
@@ -820,16 +909,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create AI provider service
-      let aiProvider: AIProviderService;
-      if (process.env.GROK_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GROK_API_KEY, 'grok', 30000);
-      } else if (process.env.GEMINI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.GEMINI_API_KEY, 'gemini', 30000);
-      } else if (process.env.OPENAI_API_KEY) {
-        aiProvider = new AIProviderService(process.env.OPENAI_API_KEY, 'openai', 30000);
-      } else {
+      const activeProvider = getActiveAIProvider();
+      if (!activeProvider) {
         throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
       }
+
+      // Use 120 second timeout for all stages with Pro models
+      const timeout = 120000;
+      const aiProvider = new AIProviderService(activeProvider.apiKey, activeProvider.provider, timeout);
 
       // Get stage-specific prompt and schema
       let prompt: string;
@@ -1331,6 +1418,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Old individual stage endpoints removed - now using unified endpoint above
+
+  // POST /api/business-analyses/:id/stages/:stageNumber/export - Export individual stage
+  // Requirements: 6.3, 6.4, 6.5, 6.6, 6.7
+  app.post("/api/business-analyses/:id/stages/:stageNumber/export", async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/stages/:stageNumber/export hit", {
+      id: req.params.id,
+      stageNumber: req.params.stageNumber,
+      format: req.body.format
+    });
+
+    try {
+      const analysisId = req.params.id;
+      const stageNumber = parseInt(req.params.stageNumber, 10);
+      const format = req.body.format || 'json'; // Default to JSON
+
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Validate stage number
+      if (isNaN(stageNumber) || stageNumber < 1 || stageNumber > 6) {
+        throw new AppError(
+          "Invalid stage number. Must be between 1 and 6.",
+          400,
+          'BAD_REQUEST'
+        );
+      }
+
+      // Validate format
+      if (!['html', 'json', 'pdf'].includes(format)) {
+        throw new AppError(
+          "Invalid export format. Must be 'html', 'json', or 'pdf'.",
+          400,
+          'BAD_REQUEST'
+        );
+      }
+
+      // Get the analysis to verify it exists
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found",
+          404,
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Create export service
+      const exportService = new ExportService(minimalStorage);
+
+      // Generate export based on format
+      const result = await exportService.exportStage(
+        req.userId || '',
+        analysisId,
+        stageNumber,
+        format as 'html' | 'json' | 'pdf'
+      );
+
+      // Set appropriate headers based on format
+      const businessName = analysis.businessModel || 'Business';
+      const stageName = exportService['getStageName'](stageNumber).replace(/[^a-z0-9]/gi, '-');
+      const filename = `${businessName.replace(/[^a-z0-9]/gi, '-')}-Stage-${stageNumber}-${stageName}.${format}`;
+
+      switch (format) {
+        case 'pdf':
+          res.setHeader('Content-Type', 'application/pdf');
+          break;
+        case 'html':
+          res.setHeader('Content-Type', 'text/html');
+          break;
+        case 'json':
+          res.setHeader('Content-Type', 'application/json');
+          break;
+        case 'csv':
+          res.setHeader('Content-Type', 'text/csv');
+          break;
+      }
+
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(result);
+    } catch (error) {
+      console.error("Stage export failed:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/export-stage1-csv - Export Stage 1 as CSV
+  // Requirements: 8.1, 8.5
+  app.post("/api/business-analyses/:id/export-stage1-csv", async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/export-stage1-csv hit", { 
+      id: req.params.id
+    });
+    
+    try {
+      const analysisId = req.params.id;
+
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Get the analysis
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Import CSV utilities
+      const { generateCSV } = await import('./lib/export-utils.js');
+
+      // Prepare data for CSV export
+      const csvData = {
+        url: analysis.url,
+        businessModel: analysis.businessModel || '',
+        revenueStream: analysis.revenueStream || '',
+        targetMarket: analysis.targetMarket || '',
+        overallScore: analysis.overallScore || '',
+        scoreDetails: analysis.scoreDetails || {},
+        aiInsights: analysis.aiInsights || {},
+        structured: analysis.structured || {},
+        currentStage: analysis.currentStage,
+        createdAt: new Date(analysis.createdAt).toLocaleString(),
+      };
+
+      // Generate CSV
+      const csvContent = generateCSV(csvData);
+      const filename = `analysis-${analysisId.slice(0, 8)}.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error("Error exporting Stage 1 CSV:", error);
+      next(error);
+    }
+  });
+
+  // POST /api/business-analyses/:id/export-complete - Export complete business plan
+  // Requirements: 2.1, 2.3, 2.4, 2.5
+  app.post("/api/business-analyses/:id/export-complete", async (req, res, next) => {
+    console.log("POST /api/business-analyses/:id/export-complete hit", { 
+      id: req.params.id, 
+      format: req.body.format 
+    });
+    
+    try {
+      const analysisId = req.params.id;
+      const format = req.body.format || 'pdf'; // Default to PDF
+
+      // Validate analysis ID
+      if (!analysisId) {
+        throw new AppError("Analysis ID is required", 400, 'BAD_REQUEST');
+      }
+
+      // Validate format
+      if (!['pdf', 'html', 'json'].includes(format)) {
+        throw new AppError(
+          "Invalid export format. Must be 'pdf', 'html', or 'json'.", 
+          400, 
+          'BAD_REQUEST'
+        );
+      }
+
+      // Get the analysis to verify it exists
+      const analysis = await minimalStorage.getAnalysis(req.userId, analysisId);
+      if (!analysis) {
+        throw new AppError(
+          "Analysis not found", 
+          404, 
+          'NOT_FOUND',
+          'The requested analysis could not be found.'
+        );
+      }
+
+      // Create export service
+      const exportService = new ExportService(minimalStorage);
+
+      // Generate export based on format
+      if (format === 'pdf') {
+        const pdfBuffer = await exportService.exportPDF(req.userId, analysisId);
+        const businessName = analysis.businessModel || 'Business-Plan';
+        const filename = `${businessName.replace(/[^a-z0-9]/gi, '-')}-Complete-Plan.pdf`;
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(pdfBuffer);
+      } else if (format === 'html') {
+        const htmlContent = await exportService.exportHTML(req.userId, analysisId);
+        const businessName = analysis.businessModel || 'Business-Plan';
+        const filename = `${businessName.replace(/[^a-z0-9]/gi, '-')}-Complete-Plan.html`;
+        
+        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(htmlContent);
+      } else if (format === 'json') {
+        const jsonContent = await exportService.exportJSON(req.userId, analysisId);
+        const businessName = analysis.businessModel || 'Business-Plan';
+        const filename = `${businessName.replace(/[^a-z0-9]/gi, '-')}-Complete-Plan.json`;
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(jsonContent);
+      }
+    } catch (error) {
+      console.error("Export generation failed:", error);
+      next(error);
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

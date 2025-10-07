@@ -202,6 +202,22 @@ export class ValidationService {
   }
 
   /**
+   * Normalizes URL by auto-prepending https:// if no protocol is present
+   * Requirement 9.1, 9.2, 9.3: Accept URLs with or without protocol
+   */
+  static normalizeUrl(url: string): string {
+    const trimmed = url.trim();
+    
+    // Already has protocol
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // Prepend https://
+    return `https://${trimmed}`;
+  }
+
+  /**
    * Sanitizes URL to prevent XSS attacks
    */
   static sanitizeUrl(url: string): string {
@@ -235,6 +251,7 @@ export class ValidationService {
 
   /**
    * Validates API input parameters for analysis requests
+   * Requirements 9.4, 9.5: Use normalized URL and provide clear error messages
    */
   static validateAnalysisRequest(body: any): { url: string; goal?: string } {
     if (!body || typeof body !== 'object') {
@@ -242,7 +259,7 @@ export class ValidationService {
     }
 
     // Validate URL
-    if (!body.url) {
+    if (body.url === undefined || body.url === null) {
       throw new Error('URL is required');
     }
 
@@ -255,11 +272,23 @@ export class ValidationService {
       throw new Error('URL cannot be empty');
     }
 
+    // Normalize URL (auto-prepend https:// if needed)
+    const normalizedUrl = this.normalizeUrl(trimmedUrl);
+
     // Validate URL format and sanitize
-    const sanitizedUrl = this.sanitizeUrl(trimmedUrl);
+    let sanitizedUrl: string;
+    try {
+      sanitizedUrl = this.sanitizeUrl(normalizedUrl);
+    } catch (error) {
+      // Provide clear error message for invalid URLs
+      throw new Error(
+        `Invalid URL format. Please enter a valid website URL (e.g., example.com or https://example.com). ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
+    }
 
     // Validate goal if provided
-    let goal: string | undefined;
     if (body.goal !== undefined) {
       if (typeof body.goal !== 'string') {
         throw new Error('Goal must be a string if provided');
@@ -274,10 +303,10 @@ export class ValidationService {
         throw new Error('Goal cannot exceed 500 characters');
       }
 
-      goal = trimmedGoal;
+      return { url: sanitizedUrl, goal: trimmedGoal };
     }
 
-    return { url: sanitizedUrl, goal };
+    return { url: sanitizedUrl };
   }
 
   /**
@@ -288,7 +317,6 @@ export class ValidationService {
       return {}; // Goal is optional, so empty body is valid
     }
 
-    let goal: string | undefined;
     if (body.goal !== undefined) {
       if (typeof body.goal !== 'string') {
         throw new Error('Goal must be a string if provided');
@@ -318,10 +346,10 @@ export class ValidationService {
         }
       }
 
-      goal = trimmedGoal;
+      return { goal: trimmedGoal };
     }
 
-    return { goal };
+    return {};
   }
 
   /**

@@ -13,14 +13,15 @@ VentureClone AI is a comprehensive business analysis platform that helps entrepr
 - **Structured Reporting**: Comprehensive analysis reports with export capabilities
 - **Real-time Monitoring**: Performance tracking and system health monitoring
 
-### Recent Enhancements (v2.0)
+### Recent Enhancements (v3.0 - January 2025)
 
-- ✅ **Enhanced Analysis Engine**: Improved AI prompts with evidence-based analysis and source attribution
-- ✅ **First-Party Data Integration**: Direct website content extraction for richer analysis context
+- ✅ **6-Stage Workflow System**: Complete business cloning workflow from discovery to AI automation
+- ✅ **Enhanced Export Functionality**: PDF, HTML, and JSON exports for all stages and complete plans
 - ✅ **Business Improvement Generator**: AI-powered improvement suggestions with actionable 7-day plans
-- ✅ **Performance Optimization**: Concurrent request handling, streaming data processing, and response time optimization
-- ✅ **Advanced UI Components**: Confidence badges, source attribution, and interactive improvement panels
-- ✅ **Comprehensive Testing**: End-to-end integration tests and performance monitoring
+- ✅ **Multi-Provider AI Support**: Gemini 2.5 Pro and Grok 4 Fast Reasoning with 120-second timeouts
+- ✅ **Comprehensive Scoring System**: 5-dimensional cloneability scoring with detailed methodology
+- ✅ **Stage-by-Stage Progress**: Visual progress tracking with stage completion indicators
+- ✅ **Professional Documentation**: Accessible scoring methodology and comprehensive guides
 
 ## System Architecture
 
@@ -77,15 +78,16 @@ Session Storage: Persistent sessions stored in database for reliability across s
 ### AI Provider Integration
 
 **Multi-Provider Architecture** with automatic fallback:
-- **Primary**: Google Gemini (gemini-2.5-flash) for enhanced analysis
-- **Fallback**: Grok (grok-2-1212) for reliability
-- **Optional**: OpenAI (gpt-4o) for additional coverage
+- **Primary**: Google Gemini 2.5 Pro for high-quality analysis
+- **Alternative**: Grok 4 Fast Reasoning for fast, reliable results
+- **Optional**: OpenAI GPT-4 for additional coverage
 
 **Enhanced Features**:
 - **Evidence-Based Prompts**: Structured analysis with source attribution
 - **Confidence Scoring**: Technical analysis confidence levels (0.0-1.0)
-- **Timeout Management**: 15-second analysis timeout with graceful fallback
+- **Extended Timeouts**: 120-second timeout for complex Pro model operations
 - **Rate Limit Handling**: Automatic retry logic and error recovery
+- **Model Selection**: Environment-based provider configuration
 
 ### Business Analysis Services
 
@@ -263,13 +265,51 @@ interface FirstPartyData {
 
 ## Usage Guide
 
-### Basic Analysis Workflow
+### 6-Stage Workflow
 
-1. **Enter Business URL**: Input the URL of the business you want to analyze
-2. **Wait for Analysis**: The system will extract first-party data and perform AI analysis
-3. **Review Results**: Examine the structured analysis with confidence indicators
-4. **Generate Improvements**: Click "Improve This Business" for enhancement suggestions
-5. **Export Results**: Copy analysis or improvements to clipboard in markdown format
+VentureClone AI guides you through a systematic 6-stage process:
+
+1. **Stage 1: Discovery & Selection**
+   - Initial business analysis with cloneability scoring
+   - Comprehensive SWOT analysis and competitor research
+   - Business improvement suggestions with 7-day action plan
+   - Export options: PDF, HTML, JSON
+
+2. **Stage 2: Lazy-Entrepreneur Filter**
+   - Effort vs. Reward analysis
+   - Automation potential assessment
+   - Resource requirements estimation
+   - Clear GO/MAYBE/NO-GO recommendation
+
+3. **Stage 3: MVP Launch Planning**
+   - Core feature identification
+   - Technology stack recommendations
+   - Development timeline with phases
+   - Cost estimation
+
+4. **Stage 4: Demand Testing Strategy**
+   - Testing method recommendations
+   - Success metrics definition
+   - Budget breakdown
+   - Timeline planning
+
+5. **Stage 5: Scaling & Growth**
+   - Growth channel strategies
+   - Milestone planning
+   - Resource scaling roadmap
+
+6. **Stage 6: AI Automation Mapping**
+   - Automation opportunity identification
+   - Implementation planning
+   - ROI estimation
+   - Complete plan export (all 6 stages)
+
+### Export Capabilities
+
+- **Per-Stage Export**: Export any individual stage as PDF, HTML, or JSON
+- **Complete Plan Export**: Export all 6 stages as a comprehensive business plan
+- **Business Improvements**: Export improvement suggestions separately
+- **Professional Formatting**: Clean, readable exports suitable for sharing
 
 ### Advanced Features
 

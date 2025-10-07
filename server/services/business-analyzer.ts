@@ -1,4 +1,5 @@
 import { AIProviderService } from './ai-providers';
+import { calculateOverallScore, DEFAULT_WEIGHTS } from './scorecard-calculator';
 
 export interface BusinessAnalysisResult {
   url: string;
@@ -121,22 +122,14 @@ export class BusinessAnalyzerService {
 
     const result = await this.aiService.generateStructuredContent(analysisPrompt, schema, systemPrompt);
 
-    // Calculate overall score
-    const weights = {
-      technicalComplexity: 0.20,
-      marketOpportunity: 0.25,
-      competitiveLandscape: 0.15,
-      resourceRequirements: 0.20,
-      timeToMarket: 0.20
-    };
-
-    const overallScore = Math.round(
-      (result.scoreDetails.technicalComplexity.score * weights.technicalComplexity +
-       result.scoreDetails.marketOpportunity.score * weights.marketOpportunity +
-       result.scoreDetails.competitiveLandscape.score * weights.competitiveLandscape +
-       result.scoreDetails.resourceRequirements.score * weights.resourceRequirements +
-       result.scoreDetails.timeToMarket.score * weights.timeToMarket) * 10
-    ) / 10;
+    // Calculate overall score using the scorecard calculator
+    const overallScore = calculateOverallScore({
+      technicalComplexity: result.scoreDetails.technicalComplexity.score,
+      marketOpportunity: result.scoreDetails.marketOpportunity.score,
+      competitiveLandscape: result.scoreDetails.competitiveLandscape.score,
+      resourceRequirements: result.scoreDetails.resourceRequirements.score,
+      timeToMarket: result.scoreDetails.timeToMarket.score
+    }, DEFAULT_WEIGHTS);
 
     return {
       url,

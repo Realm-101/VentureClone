@@ -35,17 +35,19 @@ export class WorkflowService {
 
   /**
    * Validates if a user can progress to a specific stage
-   * Requirements: 6.1, 6.2, 6.3
+   * Requirements: 6.1, 6.2, 6.3, 7.4, 7.6
    * 
    * Rules:
    * - Stage 1 is auto-completed after analysis
    * - Must complete Stage N before accessing Stage N+1
    * - Can regenerate any completed stage
+   * - Can view any completed stage without validation errors
    */
   async validateStageProgression(
     userId: string,
     analysisId: string,
-    targetStage: number
+    targetStage: number,
+    isRegenerate: boolean = false
   ): Promise<{ valid: boolean; reason?: string }> {
     // Validate stage number
     if (!VALID_STAGES.includes(targetStage)) {
@@ -73,7 +75,13 @@ export class WorkflowService {
     const stages = this.getStagesFromAnalysis(analysis);
     const completedStages = this.getCompletedStages(stages);
 
-    // Check if previous stage is completed
+    // Allow viewing/regenerating completed stages without validation
+    // Requirement 7.4, 7.6: Fix false errors when viewing completed stages
+    if (completedStages.includes(targetStage)) {
+      return { valid: true };
+    }
+
+    // For new stage generation, check if previous stage is completed
     const previousStage = targetStage - 1;
     if (!completedStages.includes(previousStage)) {
       return {
@@ -304,8 +312,8 @@ Provide a "Lazy-Entrepreneur Filter" analysis in this exact JSON format:
     ]
   },
   "resourceRequirements": {
-    "time": "Specific time estimate (e.g., '3-6 months to MVP')",
-    "money": "Specific budget estimate (e.g., '$5,000-$10,000 initial investment')",
+    "time": "Specific time estimate (e.g., '2-4 weeks to MVP' for simple, '2-3 months' for moderate, '4-6 months' for complex)",
+    "money": "Specific budget estimate (e.g., '$500-$2,000' for simple, '$3,000-$8,000' for moderate, '$10,000-$25,000' for complex)",
     "skills": ["Required skill 1", "Required skill 2", "Required skill 3"]
   },
   "nextSteps": [
@@ -343,10 +351,12 @@ REQUIREMENTS:
 - Be specific and actionable in all recommendations
 - Base estimates on the actual business model and tech stack provided
 - Identify concrete automation opportunities using modern tools (ChatGPT API, Zapier, Make, n8n, etc.)
-- Provide realistic resource requirements with specific ranges
+- Provide realistic, LEAN resource requirements - assume modern tools and frameworks reduce costs significantly
 - Make a clear go/no-go recommendation with solid reasoning (minimum 100 words)
 - Each automation opportunity should name specific tools or services
-- Resource requirements should include realistic time frames and budget ranges
+- Resource requirements should reflect MODERN development practices (AI tools, no-code platforms, open-source libraries)
+- Time estimates should assume focused, part-time work (10-20 hours/week) for solo entrepreneurs
+- Budget estimates should be CONSERVATIVE and account for free/low-cost tools available today
 - Next steps should be immediately actionable (not vague suggestions)
 
 EXAMPLE AUTOMATION OPPORTUNITIES:

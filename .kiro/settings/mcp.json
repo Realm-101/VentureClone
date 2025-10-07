@@ -7,8 +7,22 @@
       ],
       "env": {},
       "disabled": false,
+      "autoApprove": []
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "env": {
+        "CHROME_PATH": "C:\\Program Files\\Google\\Chrome Dev\\Application\\chrome.exe",
+        "PUPPETEER_EXECUTABLE_PATH": "C:\\Program Files\\Google\\Chrome Dev\\Application\\chrome.exe"
+      },
+      "disabled": false,
       "autoApprove": [
-        "fetch"
+        "list_pages",
+        "new_page"
       ]
     }
   }

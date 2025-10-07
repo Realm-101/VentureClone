@@ -248,4 +248,121 @@ describe('Workflow Integration Tests', () => {
       expect(result3.errors).toContain('Stage content must be an object');
     });
   });
+
+  describe('Stage Navigation Flow (Task 15.1)', () => {
+    it('should allow forward navigation through completed stages', async () => {
+      // Stage 1 is auto-completed, so we should be able to navigate to Stage 2
+      const stage2Valid = await workflowService.validateStageProgression(testUserId, testAnalysisId, 2);
+      expect(stage2Valid.valid).toBe(true);
+
+      // Complete Stage 2 by saving stage data
+      const stage2Data = {
+        effortScore: 7,
+        rewardScore: 8,
+        recommendation: 'go',
+        reasoning: 'Good opportunity with manageable effort',
+        automationPotential: { score: 0.7, opportunities: ['API integration'] },
+        resourceRequirements: { team: 2, budget: 10000 },
+        nextSteps: ['Build MVP']
+      };
+
+      await minimalStorage.saveStageData(testUserId, testAnalysisId, 2, stage2Data);
+
+      // Now Stage 3 should be accessible
+      const stage3Valid = await workflowService.validateStageProgression(testUserId, testAnalysisId, 3);
+      expect(stage3Valid.valid).toBe(true);
+    });
+
+    it('should allow back navigation to any completed stage', async () => {
+      // Get current analysis state
+      const analysis = await minimalStorage.getAnalysis(testUserId, testAnalysisId);
+      const stages = analysis?.stages;
+
+      // Stage 1 should always be accessible (auto-completed)
+      const stage1Valid = await workflowService.validateStageProgression(testUserId, testAnalysisId, 1);
+      expect(stage1Valid.valid).toBe(true);
+
+      // If Stage 2 is completed, we should be able to navigate back to it
+      if (stages && stages[2]) {
+        const stage2Valid = await workflowService.validateStageProgression(testUserId, testAnalysisId, 2);
+        expect(stage2Valid.valid).toBe(true);
+      }
+    });
+
+    it('should prevent navigation to incomplete stages', async () => {
+      // Try to access Stage 6 without completing previous stages
+      const stage6Valid = await workflowService.validateStageProgression(testUserId, testAnalysisId, 6);
+      expect(stage6Valid.valid).toBe(false);
+      expect(stage6Valid.reason).toBeDefined();
+    });
+
+    it('should track stage completion status correctly', async () => {
+      const analysis = await minimalStorage.getAnalysis(testUserId, testAnalysisId);
+      const stages = analysis?.stages;
+
+      // Check that completed stages are tracked
+      const completedStages = workflowService.getCompletedStages(stages);
+      expect(completedStages.length).toBeGreaterThanOrEqual(1); // At least Stage 1
+
+      // Verify each completed stage has data
+      for (const stageNum of completedStages) {
+        expect(stages?.[stageNum]).toBeDefined();
+        expect(stages?.[stageNum].stageData).toBeDefined();
+      }
+    });
+
+    it('should handle stage progression with error states', async () => {
+      // Test with invalid user ID
+      const invalidUserResult = await workflowService.validateStageProgression('invalid-user', testAnalysisId, 2);
+      expect(invalidUserResult.valid).toBe(false);
+
+      // Test with invalid analysis ID
+      const invalidAnalysisResult = await workflowService.validateStageProgression(testUserId, 'invalid-analysis', 2);
+      expect(invalidAnalysisResult.valid).toBe(false);
+
+      // Test with out-of-range stage number
+      const invalidStageResult = await workflowService.validateStageProgression(testUserId, testAnalysisId, 99);
+      expect(invalidStageResult.valid).toBe(false);
+      expect(invalidStageResult.reason).toContain('Invalid stage number');
+    });
+
+    it('should update current stage indicator correctly', async () => {
+      const analysis = await minimalStorage.getAnalysis(testUserId, testAnalysisId);
+      const stages = analysis?.stages;
+
+      const currentStage = workflowService.getCurrentStage(stages);
+      expect(currentStage).toBeGreaterThanOrEqual(1);
+      expect(currentStage).toBeLessThanOrEqual(6);
+
+      // Current stage should be the next incomplete stage
+      const completedStages = workflowService.getCompletedStages(stages);
+      if (completedStages.length < 6) {
+        expect(currentStage).toBe(Math.max(...completedStages) + 1);
+      } else {
+        expect(currentStage).toBe(6);
+      }
+    });
+
+    it('should provide accurate progress summary', async () => {
+      const analysis = await minimalStorage.getAnalysis(testUserId, testAnalysisId);
+      const stages = analysis?.stages;
+
+      const progress = workflowService.getProgressSummary(stages);
+      
+      expect(progress.totalStages).toBe(6);
+      expect(progress.completedStages).toBeGreaterThanOrEqual(0);
+      expect(progress.completedStages).toBeLessThanOrEqual(6);
+      expect(progress.currentStage).toBeGreaterThanOrEqual(1);
+      expect(progress.currentStage).toBeLessThanOrEqual(6);
+      
+      // If all stages complete, isComplete should be true
+      if (progress.completedStages === 6) {
+        expect(progress.isComplete).toBe(true);
+        expect(progress.nextStage).toBeNull();
+      } else {
+        expect(progress.isComplete).toBe(false);
+        expect(progress.nextStage).toBeGreaterThan(progress.currentStage);
+      }
+    });
+  });
 });

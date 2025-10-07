@@ -13,7 +13,17 @@
 ## Client Structure (`client/`)
 - **index.html**: Main HTML entry point
 - **src/**: React application source code
-  - Components organized by feature/page
+  - **components/**: React components
+    - `workflow-tabs.tsx`: Stage navigation and display
+    - `progress-tracker.tsx`: Progress sidebar
+    - `clonability-scorecard.tsx`: Scorecard display
+    - `export-dropdown.tsx`: Export functionality
+    - `business-improvement.tsx`: Improvement results display
+    - `ai-provider-modal.tsx`: AI provider configuration
+  - **hooks/**: Custom React hooks
+    - `useStageNavigation.ts`: Stage navigation logic
+  - **lib/**: Utility functions
+    - `export-utils.ts`: Client-side export helpers
   - Uses `@/` path alias for clean imports
   - Follows component-based architecture with shadcn/ui patterns
 
@@ -21,7 +31,21 @@
 - **index.ts**: Main server entry point with Express setup
 - **routes.ts**: API route registration and organization
 - **services/**: Business logic and external service integrations
-- **storage.ts**: Database abstraction layer
+  - `ai-providers.ts`: AI provider integration (OpenAI, Gemini, Grok)
+  - `workflow.ts`: 6-stage workflow management
+  - `validation.ts`: Stage content validation
+  - `business-improvement.ts`: Business improvement generation
+  - `export-service.ts`: Export functionality (PDF, HTML, JSON, CSV)
+- **lib/**: Utility functions and helpers
+  - `validation.ts`: Input validation and sanitization
+  - `retry.ts`: Retry logic with exponential backoff
+  - `fetchFirstParty.ts`: First-party data extraction
+  - `export-utils.ts`: Export generation utilities
+- **middleware/**: Express middleware
+  - `errorHandler.ts`: Centralized error handling
+  - `rateLimit.ts`: Rate limiting
+  - `user.ts`: User context middleware
+- **minimal-storage.ts**: Database abstraction layer
 - **migrate.ts**: Database migration runner
 - **vite.ts**: Development server integration
 

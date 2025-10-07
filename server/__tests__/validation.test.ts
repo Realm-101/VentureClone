@@ -365,4 +365,141 @@ describe('ValidationService', () => {
       expect(result).toHaveLength(300);
     });
   });
+
+  describe('normalizeUrl', () => {
+    it('should prepend https:// to URLs without protocol', () => {
+      expect(ValidationService.normalizeUrl('example.com')).toBe('https://example.com');
+      expect(ValidationService.normalizeUrl('www.example.com')).toBe('https://www.example.com');
+      expect(ValidationService.normalizeUrl('subdomain.example.com')).toBe('https://subdomain.example.com');
+    });
+
+    it('should preserve https:// protocol', () => {
+      expect(ValidationService.normalizeUrl('https://example.com')).toBe('https://example.com');
+      expect(ValidationService.normalizeUrl('HTTPS://example.com')).toBe('HTTPS://example.com');
+    });
+
+    it('should preserve http:// protocol', () => {
+      expect(ValidationService.normalizeUrl('http://example.com')).toBe('http://example.com');
+      expect(ValidationService.normalizeUrl('HTTP://example.com')).toBe('HTTP://example.com');
+    });
+
+    it('should handle URLs with paths', () => {
+      expect(ValidationService.normalizeUrl('example.com/path/to/page')).toBe('https://example.com/path/to/page');
+      expect(ValidationService.normalizeUrl('https://example.com/path')).toBe('https://example.com/path');
+    });
+
+    it('should handle URLs with query parameters', () => {
+      expect(ValidationService.normalizeUrl('example.com?param=value')).toBe('https://example.com?param=value');
+      expect(ValidationService.normalizeUrl('https://example.com?param=value')).toBe('https://example.com?param=value');
+    });
+
+    it('should handle URLs with ports', () => {
+      expect(ValidationService.normalizeUrl('example.com:8080')).toBe('https://example.com:8080');
+      expect(ValidationService.normalizeUrl('http://example.com:3000')).toBe('http://example.com:3000');
+    });
+
+    it('should trim whitespace', () => {
+      expect(ValidationService.normalizeUrl('  example.com  ')).toBe('https://example.com');
+      expect(ValidationService.normalizeUrl('  https://example.com  ')).toBe('https://example.com');
+    });
+
+    it('should handle empty strings', () => {
+      expect(ValidationService.normalizeUrl('')).toBe('https://');
+      expect(ValidationService.normalizeUrl('   ')).toBe('https://');
+    });
+
+    it('should prepend https:// to other protocols (edge case)', () => {
+      // normalizeUrl only checks for http/https, so other protocols get https:// prepended
+      // This is expected behavior - validation happens in sanitizeUrl
+      expect(ValidationService.normalizeUrl('ftp://example.com')).toBe('https://ftp://example.com');
+      expect(ValidationService.normalizeUrl('ws://example.com')).toBe('https://ws://example.com');
+    });
+  });
+
+  describe('validateAnalysisRequest', () => {
+    it('should accept valid URL without protocol', () => {
+      const body = { url: 'example.com' };
+      const result = ValidationService.validateAnalysisRequest(body);
+      expect(result.url).toBe('https://example.com/');
+    });
+
+    it('should accept valid URL with https protocol', () => {
+      const body = { url: 'https://example.com' };
+      const result = ValidationService.validateAnalysisRequest(body);
+      expect(result.url).toBe('https://example.com/');
+    });
+
+    it('should accept valid URL with http protocol', () => {
+      const body = { url: 'http://example.com' };
+      const result = ValidationService.validateAnalysisRequest(body);
+      expect(result.url).toBe('http://example.com/');
+    });
+
+    it('should reject invalid URL formats', () => {
+      expect(() => ValidationService.validateAnalysisRequest({ url: 'not a url' })).toThrow('Invalid URL format');
+      expect(() => ValidationService.validateAnalysisRequest({ url: '://invalid' })).toThrow('Invalid URL format');
+    });
+
+    it('should reject missing URL', () => {
+      expect(() => ValidationService.validateAnalysisRequest({})).toThrow('URL is required');
+      expect(() => ValidationService.validateAnalysisRequest({ url: null })).toThrow('URL is required');
+      expect(() => ValidationService.validateAnalysisRequest({ url: undefined })).toThrow('URL is required');
+    });
+
+    it('should reject non-string URLs', () => {
+      expect(() => ValidationService.validateAnalysisRequest({ url: 123 })).toThrow('URL must be a string');
+      expect(() => ValidationService.validateAnalysisRequest({ url: {} })).toThrow('URL must be a string');
+      expect(() => ValidationService.validateAnalysisRequest({ url: [] })).toThrow('URL must be a string');
+    });
+
+    it('should reject empty URLs', () => {
+      expect(() => ValidationService.validateAnalysisRequest({ url: '' })).toThrow('URL cannot be empty');
+      // Whitespace-only URLs get trimmed to empty, then normalized to 'https://', which is invalid
+      expect(() => ValidationService.validateAnalysisRequest({ url: '   ' })).toThrow();
+    });
+
+    it('should accept optional goal parameter', () => {
+      const body = { url: 'example.com', goal: 'Test goal' };
+      const result = ValidationService.validateAnalysisRequest(body);
+      expect(result.url).toBe('https://example.com/');
+      expect(result.goal).toBe('Test goal');
+    });
+
+    it('should trim goal parameter', () => {
+      const body = { url: 'example.com', goal: '  Test goal  ' };
+      const result = ValidationService.validateAnalysisRequest(body);
+      expect(result.goal).toBe('Test goal');
+    });
+
+    it('should reject empty goal', () => {
+      expect(() => ValidationService.validateAnalysisRequest({ url: 'example.com', goal: '' })).toThrow('Goal cannot be empty');
+      expect(() => ValidationService.validateAnalysisRequest({ url: 'example.com', goal: '   ' })).toThrow('Goal cannot be empty');
+    });
+
+    it('should reject non-string goal', () => {
+      expect(() => ValidationService.validateAnalysisRequest({ url: 'example.com', goal: 123 })).toThrow('Goal must be a string');
+    });
+
+    it('should reject goal exceeding max length', () => {
+      const longGoal = 'A'.repeat(501);
+      expect(() => ValidationService.validateAnalysisRequest({ url: 'example.com', goal: longGoal })).toThrow('Goal cannot exceed 500 characters');
+    });
+
+    it('should reject non-object body', () => {
+      expect(() => ValidationService.validateAnalysisRequest(null)).toThrow('Request body must be an object');
+      expect(() => ValidationService.validateAnalysisRequest('string')).toThrow('Request body must be an object');
+      expect(() => ValidationService.validateAnalysisRequest(123)).toThrow('Request body must be an object');
+    });
+
+    it('should provide clear error messages', () => {
+      try {
+        ValidationService.validateAnalysisRequest({ url: 'invalid url' });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toContain('Invalid URL format');
+        expect((error as Error).message).toContain('example.com');
+      }
+    });
+  });
 });

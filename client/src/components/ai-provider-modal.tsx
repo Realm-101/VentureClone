@@ -152,13 +152,13 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
               data-testid="select-provider"
             >
               {providers.some(p => p.provider === 'gemini') && (
-                <SelectItem value="gemini" className="text-vc-text">Google Gemini 2.5 Flash</SelectItem>
+                <SelectItem value="gemini" className="text-vc-text">Google Gemini 2.5 Pro</SelectItem>
               )}
               {providers.some(p => p.provider === 'openai') && (
                 <SelectItem value="openai" className="text-vc-text">OpenAI GPT-4</SelectItem>
               )}
               {providers.some(p => p.provider === 'grok') && (
-                <SelectItem value="grok" className="text-vc-text">xAI Grok</SelectItem>
+                <SelectItem value="grok" className="text-vc-text">xAI Grok 4 Fast Reasoning</SelectItem>
               )}
             </Select>
             <p className="text-xs text-vc-text-muted mt-1">

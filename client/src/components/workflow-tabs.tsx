@@ -1,15 +1,22 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Download, RotateCcw, CheckCircle } from "lucide-react";
+import { ArrowRight, Download, RotateCcw, CheckCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useStageNavigation } from "@/hooks/useStageNavigation";
 import { AIService } from "@/lib/ai-service";
 import { ExportAnalysis } from "@/components/export-analysis";
 import { EnhancedAnalysisDisplay } from "@/components/enhanced-analysis-display";
+import { BusinessImprovement } from "@/components/business-improvement";
+import { StructuredReport } from "@/components/StructuredReport";
+import { ExportCompletePlan } from "@/components/export-complete-plan";
+import { ExportDropdown } from "@/components/export-dropdown";
 import type { BusinessAnalysis, WorkflowStage } from "@/types";
+import type { EnhancedAnalysisRecord } from "@shared/schema";
 
 interface WorkflowTabsProps {
   analysis: BusinessAnalysis;
@@ -26,7 +33,7 @@ const STAGE_NAMES = [
 ];
 
 export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
-  const [activeStage, setActiveStage] = useState(analysis.currentStage || 1);
+  const [showContinueButton, setShowContinueButton] = useState<Record<number, boolean>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -42,6 +49,20 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
   });
 
   const stages = stagesResponse?.stages || {};
+  
+  // Use stage navigation hook for state management
+  const {
+    activeStage,
+    stageStatuses,
+    navigateToStage,
+    getStageStatus,
+    canAccessStage,
+    isStageCompleted,
+  } = useStageNavigation({
+    currentStage: analysis.currentStage || 1,
+    stages,
+    completedStages: stagesResponse?.completedStages || [],
+  });
 
   const generateStageMutation = useMutation({
     mutationFn: async ({ stageNumber, regenerate = false }: { stageNumber: number; regenerate?: boolean }) => {
@@ -67,10 +88,8 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
         title: "Stage Generated Successfully",
         description: `${STAGE_NAMES[data.stageNumber]} has been generated`,
       });
-      // Move to the next stage if available
-      if (data.nextStage) {
-        setActiveStage(data.nextStage);
-      }
+      // Show continue button instead of auto-navigating
+      setShowContinueButton(prev => ({ ...prev, [data.stageNumber]: true }));
     },
     onError: (error: any) => {
       toast({
@@ -81,26 +100,16 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
     },
   });
 
-  const getStageStatus = (stageNumber: number) => {
-    const stage = stages[stageNumber];
-    if (stage?.status === 'completed') return 'completed';
-    if (stageNumber === 1) return 'completed'; // Stage 1 is always completed after analysis
-    if (stageNumber <= (stagesResponse?.currentStage || 1)) return 'current';
-    return 'pending';
-  };
-
   const getStageData = (stageNumber: number) => {
     return stages[stageNumber];
   };
 
-  const isStageCompleted = (stageNumber: number) => {
-    return stagesResponse?.completedStages?.includes(stageNumber) || stageNumber === 1;
-  };
-
-  const canAccessStage = (stageNumber: number) => {
-    if (stageNumber === 1) return true;
-    // Can access if previous stage is completed
-    return isStageCompleted(stageNumber - 1);
+  const handleContinueToNextStage = (currentStage: number) => {
+    const nextStage = currentStage + 1;
+    if (nextStage <= 6) {
+      navigateToStage(nextStage);
+      setShowContinueButton(prev => ({ ...prev, [currentStage]: false }));
+    }
   };
 
   const renderStageContent = (stageNumber: number) => {
@@ -141,23 +150,47 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
                 Generated on {new Date(stage.generatedAt).toLocaleDateString()}
               </span>
             </div>
-            <Button
-              onClick={() => {
-                if (confirm(`Are you sure you want to regenerate ${STAGE_NAMES[stageNumber]}? This will replace the existing content.`)) {
-                  generateStageMutation.mutate({ stageNumber, regenerate: true });
-                }
-              }}
-              disabled={generateStageMutation.isPending}
-              variant="outline"
-              size="sm"
-              className="border-vc-border text-vc-text hover:border-vc-primary"
-              data-testid={`button-regenerate-stage-${stageNumber}`}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              {generateStageMutation.isPending ? 'Regenerating...' : 'Regenerate'}
-            </Button>
+            <div className="flex items-center space-x-2">
+              {stageNumber >= 2 && STAGE_NAMES[stageNumber] && (
+                <ExportDropdown
+                  analysisId={analysis.id}
+                  stageNumber={stageNumber}
+                  stageName={STAGE_NAMES[stageNumber]}
+                  businessName={analysis.businessModel || 'Business'}
+                />
+              )}
+              <Button
+                onClick={() => {
+                  if (confirm(`Are you sure you want to regenerate ${STAGE_NAMES[stageNumber]}? This will replace the existing content.`)) {
+                    generateStageMutation.mutate({ stageNumber, regenerate: true });
+                  }
+                }}
+                disabled={generateStageMutation.isPending}
+                variant="outline"
+                size="sm"
+                className="border-vc-border text-vc-text hover:border-vc-primary"
+                data-testid={`button-regenerate-stage-${stageNumber}`}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {generateStageMutation.isPending ? 'Regenerating...' : 'Regenerate'}
+              </Button>
+            </div>
           </div>
           {renderStageSpecificContent(stageNumber, stage.content)}
+          
+          {/* Continue to Next Stage Button - Show for all completed stages 1-5 */}
+          {stageNumber < 6 && (
+            <div className="flex justify-end pt-6 border-t border-vc-border">
+              <Button
+                onClick={() => handleContinueToNextStage(stageNumber)}
+                className="bg-vc-primary hover:bg-vc-primary/80 text-white font-semibold shadow-neon"
+                data-testid={`button-continue-stage-${stageNumber + 1}`}
+              >
+                Continue to Stage {stageNumber + 1}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       );
     }
@@ -208,12 +241,48 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
     };
 
     const scoreItems = [
-      { key: 'technicalComplexity', label: 'Technical Complexity', weight: weights.technicalComplexity },
-      { key: 'marketOpportunity', label: 'Market Opportunity', weight: weights.marketOpportunity },
-      { key: 'competitiveLandscape', label: 'Competitive Landscape', weight: weights.competitiveLandscape },
-      { key: 'resourceRequirements', label: 'Resource Requirements', weight: weights.resourceRequirements },
-      { key: 'timeToMarket', label: 'Time to Market', weight: weights.timeToMarket },
+      { 
+        key: 'technicalComplexity', 
+        label: 'Technical Simplicity', 
+        weight: weights.technicalComplexity,
+        tooltip: 'Higher score = simpler to build. Measures how easy it is to replicate the technical implementation.'
+      },
+      { 
+        key: 'marketOpportunity', 
+        label: 'Market Opportunity', 
+        weight: weights.marketOpportunity,
+        tooltip: 'Higher score = better opportunity. Measures market size, demand, and growth potential.'
+      },
+      { 
+        key: 'competitiveLandscape', 
+        label: 'Competitive Landscape', 
+        weight: weights.competitiveLandscape,
+        tooltip: 'Higher score = less competition. Measures how easy it is to compete in this market.'
+      },
+      { 
+        key: 'resourceRequirements', 
+        label: 'Resource Requirements', 
+        weight: weights.resourceRequirements,
+        tooltip: 'Higher score = fewer resources needed. Measures capital, team, and infrastructure requirements.'
+      },
+      { 
+        key: 'timeToMarket', 
+        label: 'Time to Market', 
+        weight: weights.timeToMarket,
+        tooltip: 'Higher score = faster to launch. Measures how quickly you can build and launch an MVP.'
+      },
     ];
+
+    // Calculate overall score from weighted criteria
+    const calculateOverallScore = () => {
+      const weightedSum = scoreItems.reduce((sum, item) => {
+        const scoreData = analysis.scoreDetails![item.key as keyof typeof analysis.scoreDetails] as any;
+        return sum + (scoreData.score * (item.weight / 100));
+      }, 0);
+      return Math.round(weightedSum * 10) / 10;
+    };
+
+    const calculatedOverallScore = calculateOverallScore();
 
     const getScoreColor = (score: number) => {
       if (score >= 8) return 'bg-green-900/50 text-green-300';
@@ -257,8 +326,16 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
 
           {/* Cloneability Scorecard */}
           <div className="bg-vc-dark rounded-lg border border-vc-border overflow-hidden">
-            <div className="bg-vc-card px-4 py-3 border-b border-vc-border">
+            <div className="bg-vc-card px-4 py-3 border-b border-vc-border flex items-center justify-between">
               <h4 className="font-semibold text-vc-text">Cloneability Scorecard</h4>
+              <a 
+                href="/docs/SCORING_METHODOLOGY.md" 
+                target="_blank"
+                className="text-xs text-vc-primary hover:text-vc-primary/80 flex items-center gap-1"
+              >
+                <Info className="h-3 w-3" />
+                Learn about scoring methodology
+              </a>
             </div>
             <div className="p-4">
               <div className="overflow-x-auto">
@@ -279,7 +356,21 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
                       
                       return (
                         <tr key={item.key} className="border-b border-vc-border/50">
-                          <td className="py-3 text-vc-text">{item.label}</td>
+                          <td className="py-3 text-vc-text">
+                            <div className="flex items-center gap-2">
+                              <span>{item.label}</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-vc-text-muted cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>{item.tooltip}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </td>
                           <td className="py-3 text-center">
                             <Badge className={`${getScoreColor(scoreData.score)} text-xs font-medium`}>
                               {scoreData.score}/10
@@ -294,19 +385,37 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-vc-border">
-                      <td className="pt-3 font-semibold text-vc-text">Overall Score</td>
+                      <td className="pt-3 font-semibold text-vc-text">
+                        <div className="flex items-center gap-2">
+                          <span>Overall Score</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-vc-text-muted cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                <p className="font-semibold mb-2">Weighted Score Calculation:</p>
+                                <p className="text-xs">
+                                  Overall Score = (Technical Simplicity × 20%) + (Market Opportunity × 25%) + 
+                                  (Competitive Landscape × 15%) + (Resource Requirements × 20%) + (Time to Market × 20%)
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
                       <td className="pt-3 text-center">
                         <Badge className="bg-vc-primary text-white text-sm font-bold">
-                          {analysis.overallScore}/10
+                          {calculatedOverallScore}/10
                         </Badge>
                       </td>
                       <td className="pt-3 text-center text-vc-text-muted">100%</td>
                       <td className="pt-3 text-center text-vc-accent font-bold text-lg">
-                        {analysis.overallScore}
+                        {calculatedOverallScore}
                       </td>
                       <td className="pt-3 text-sm text-green-400 font-medium">
-                        {(analysis.overallScore || 0) >= 7 ? 'Strong Clone Candidate ✓' : 
-                         (analysis.overallScore || 0) >= 5 ? 'Moderate Candidate' : 
+                        {calculatedOverallScore >= 7 ? 'Strong Clone Candidate ✓' : 
+                         calculatedOverallScore >= 5 ? 'Moderate Candidate' : 
                          'Weak Candidate'}
                       </td>
                     </tr>
@@ -317,35 +426,48 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
           </div>
         </div>
 
-        {/* Enhanced Analysis Display with Improvement Functionality */}
+        {/* Structured Analysis Report */}
         {analysis.structured && (
           <div className="mt-6">
-            <EnhancedAnalysisDisplay analysis={analysis} />
+            <StructuredReport data={analysis.structured} url={analysis.url} />
           </div>
         )}
 
+        {/* Business Improvement Component - Requirements 4.2, 4.3, 4.4, 4.5 */}
+        <div className="mt-6">
+          <BusinessImprovement 
+            analysisId={analysis.id}
+            {...((analysis as EnhancedAnalysisRecord).improvements && {
+              existingImprovement: (analysis as EnhancedAnalysisRecord).improvements
+            })}
+          />
+        </div>
+
         {/* Action Buttons */}
         <div className="flex justify-between items-center pt-4 border-t border-vc-border">
-          <ExportAnalysis analysis={analysis} stages={stages} />
+          <ExportDropdown 
+            analysisId={analysis.id}
+            stageNumber={1}
+            stageName="Discovery-Selection"
+            businessName={analysis.businessModel || 'Business'}
+          />
           <div className="flex space-x-3">
             <Button
               variant="outline"
+              onClick={() => window.location.href = '/'}
               className="bg-vc-card border-vc-border text-vc-text hover:border-vc-primary"
               data-testid="button-reanalyze"
             >
               <RotateCcw className="mr-2 h-4 w-4" />
               Re-analyze
             </Button>
+            {/* Continue to Next Stage Button for Stage 1 */}
             <Button
-              onClick={() => {
-                setActiveStage(2);
-                generateStageMutation.mutate({ stageNumber: 2 });
-              }}
-              disabled={generateStageMutation.isPending}
+              onClick={() => handleContinueToNextStage(1)}
               className="bg-vc-primary hover:bg-vc-primary/80 text-white font-semibold shadow-neon"
-              data-testid="button-proceed-stage-2"
+              data-testid="button-continue-stage-2"
             >
-              {generateStageMutation.isPending ? 'Generating...' : 'Proceed to Filter'}
+              Continue to Stage 2
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -374,23 +496,84 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
   const renderLazyEntrepreneurFilter = (data: any) => (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <Badge className={`text-lg font-bold px-6 py-2 ${
-          data.recommendation === 'go' ? 'bg-green-900/50 text-green-300' :
-          data.recommendation === 'maybe' ? 'bg-yellow-900/50 text-yellow-300' :
-          'bg-red-900/50 text-red-300'
-        }`}>
-          {data.recommendation.toUpperCase()}
-        </Badge>
+        <div className="inline-block">
+          <div className="text-xs text-vc-text-muted mb-2 font-medium">RECOMMENDATION</div>
+          <Badge className={`text-2xl font-bold px-8 py-3 shadow-lg border-2 ${
+            data.recommendation === 'go' ? 'bg-green-900/50 text-green-300 border-green-500/50' :
+            data.recommendation === 'maybe' ? 'bg-yellow-900/50 text-yellow-300 border-yellow-500/50' :
+            'bg-red-900/50 text-red-300 border-red-500/50'
+          }`}>
+            {data.recommendation === 'go' ? '✓ GO' : 
+             data.recommendation === 'maybe' ? '? MAYBE' : 
+             '✗ NO-GO'}
+          </Badge>
+          <div className="text-xs text-vc-text-muted mt-2">
+            {data.recommendation === 'go' ? 'Strong opportunity - proceed with confidence' :
+             data.recommendation === 'maybe' ? 'Requires more validation before proceeding' :
+             'Not recommended - consider alternatives'}
+          </div>
+        </div>
+      </div>
+
+      {/* Score Methodology Explanation */}
+      <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Info className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-blue-300 font-semibold text-sm">How Stage 1 & Stage 2 Scores Relate</h4>
+              <a 
+                href="/docs/SCORING_METHODOLOGY.md" 
+                target="_blank"
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              >
+                View full methodology →
+              </a>
+            </div>
+            <p className="text-sm text-vc-text-muted leading-relaxed">
+              Stage 1's clonability scores inform this stage's effort/reward assessment:
+            </p>
+            <ul className="text-sm text-vc-text-muted space-y-1 ml-4">
+              <li>• <span className="text-vc-text">Effort Score</span> is derived from Technical Simplicity, Resource Requirements, and Time to Market</li>
+              <li>• <span className="text-vc-text">Reward Score</span> is derived from Market Opportunity and Competitive Landscape</li>
+              <li>• The <span className="text-vc-text">recommendation</span> balances effort vs. reward to determine if this is worth pursuing</li>
+            </ul>
+          </div>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-vc-dark rounded-lg border border-vc-border p-6">
-          <h4 className="text-vc-text-muted text-sm font-medium mb-2">Effort Score</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <h4 className="text-vc-text-muted text-sm font-medium">Effort Score</h4>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-vc-text-muted cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Measures how much work is required. Based on technical complexity, resources needed, and time to build. Lower scores mean less effort required.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="text-3xl font-bold text-vc-accent">{data.effortScore}/10</div>
           <p className="text-xs text-vc-text-muted mt-2">Lower is better</p>
         </div>
         <div className="bg-vc-dark rounded-lg border border-vc-border p-6">
-          <h4 className="text-vc-text-muted text-sm font-medium mb-2">Reward Score</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <h4 className="text-vc-text-muted text-sm font-medium">Reward Score</h4>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-vc-text-muted cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Measures potential return on investment. Based on market size, demand, and competitive advantage. Higher scores mean better potential rewards.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="text-3xl font-bold text-vc-accent">{data.rewardScore}/10</div>
           <p className="text-xs text-vc-text-muted mt-2">Higher is better</p>
         </div>
@@ -788,19 +971,24 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
           <div className="text-3xl font-bold text-green-400">{data.estimatedSavings}</div>
         </div>
       </div>
+
+      {/* Export Complete Plan Button */}
+      <div className="flex justify-center pt-6 border-t border-vc-border">
+        <ExportCompletePlan analysisId={analysis.id} businessName={analysis.businessModel || 'Business-Plan'} />
+      </div>
     </div>
   );
 
   return (
     <Card className="bg-vc-card border-vc-border" data-testid="card-workflow-tabs">
-      <Tabs value={activeStage.toString()} onValueChange={(value) => setActiveStage(parseInt(value))}>
+      <Tabs value={activeStage.toString()} onValueChange={(value) => navigateToStage(parseInt(value))}>
         {/* Tab Navigation */}
         <TabsList className="grid w-full grid-cols-6 bg-vc-card border-b border-vc-border rounded-none h-auto p-0">
           {[1, 2, 3, 4, 5, 6].map((stage) => {
             const status = getStageStatus(stage);
             const isCompleted = isStageCompleted(stage);
             const canAccess = canAccessStage(stage);
-            const isCurrent = stage === (stagesResponse?.currentStage || 1);
+            const isCurrent = stage === activeStage;
             
             return (
               <TabsTrigger

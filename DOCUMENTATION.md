@@ -7,10 +7,11 @@
 4. [Architecture](#architecture)
 5. [API Reference](#api-reference)
 6. [Workflow Stages](#workflow-stages)
-7. [AI Integration](#ai-integration)
-8. [Analytics & Insights](#analytics--insights)
-9. [Troubleshooting](#troubleshooting)
-10. [Best Practices](#best-practices)
+7. [Scoring Methodology](#scoring-methodology)
+8. [AI Integration](#ai-integration)
+9. [Analytics & Insights](#analytics--insights)
+10. [Troubleshooting](#troubleshooting)
+11. [Best Practices](#best-practices)
 
 ## Overview
 
@@ -163,6 +164,8 @@ GET /api/analytics/comparison       # Get comparison data
 
 ## Workflow Stages
 
+For detailed information about how scores are calculated and how Stage 1 and Stage 2 scores relate to each other, see the [Scoring Methodology](docs/SCORING_METHODOLOGY.md) documentation.
+
 ### Stage 1: Discovery & Selection
 **Purpose**: Identify and validate business opportunities
 **Key Activities**:
@@ -210,6 +213,39 @@ GET /api/analytics/comparison       # Get comparison data
 - AI integration points
 - Efficiency optimization
 **Output**: Automation roadmap
+
+## Scoring Methodology
+
+VentureClone AI uses a sophisticated two-stage scoring system to evaluate business opportunities:
+
+### Stage 1: Clonability Scorecard
+
+Evaluates businesses across five weighted criteria:
+- **Technical Simplicity (20%)**: How easy to replicate technically
+- **Market Opportunity (25%)**: Market size and growth potential  
+- **Competitive Landscape (15%)**: Competition level and barriers
+- **Resource Requirements (20%)**: Capital, team, and infrastructure needs
+- **Time to Market (20%)**: Speed to launch an MVP
+
+The overall score is calculated as a weighted sum of these criteria, providing a comprehensive clonability assessment from 0-10.
+
+### Stage 2: Lazy Entrepreneur Filter
+
+Refines Stage 1 by focusing on effort vs. reward:
+- **Effort Score**: Derived from Technical Simplicity, Resource Requirements, and Time to Market
+- **Reward Score**: Derived from Market Opportunity and Competitive Landscape
+- **Recommendation**: GO/MAYBE/NO GO based on the effort-reward balance
+
+### Detailed Methodology
+
+For complete details on:
+- How each criterion is calculated
+- The exact formulas used
+- How Stage 1 and Stage 2 scores relate
+- Score interpretation guidelines
+- AI reasoning factors
+
+See the comprehensive [Scoring Methodology Documentation](docs/SCORING_METHODOLOGY.md).
 
 ## AI Integration
 
