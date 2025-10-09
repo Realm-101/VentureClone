@@ -1,7 +1,7 @@
 export interface AIProvider {
   id: string;
   userId: string;
-  provider: 'openai' | 'gemini' | 'grok';
+  provider: 'openai' | 'gemini' | 'grok' | 'gpt5';
   apiKey: string;
   isActive: boolean;
   createdAt: Date;

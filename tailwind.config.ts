@@ -72,6 +72,8 @@ export default {
       },
       fontFamily: {
         sans: [
+          'Created',
+          'Inter',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',

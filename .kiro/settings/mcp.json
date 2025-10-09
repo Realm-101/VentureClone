@@ -7,22 +7,24 @@
       ],
       "env": {},
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [
+        "fetch"
+      ]
     },
     "chrome-devtools": {
       "command": "npx",
       "args": [
         "-y",
-        "chrome-devtools-mcp@latest"
+        "chrome-devtools-mcp@latest",
+        "--executablePath",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
       ],
-      "env": {
-        "CHROME_PATH": "C:\\Program Files\\Google\\Chrome Dev\\Application\\chrome.exe",
-        "PUPPETEER_EXECUTABLE_PATH": "C:\\Program Files\\Google\\Chrome Dev\\Application\\chrome.exe"
-      },
-      "disabled": false,
+      "env": {},
+      "disabled": true,
       "autoApprove": [
         "list_pages",
-        "new_page"
+        "new_page",
+        "performance_start_trace"
       ]
     }
   }

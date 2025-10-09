@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export type AIProvider = 'openai' | 'gemini' | 'grok';
+export type AIProvider = 'openai' | 'gemini' | 'grok' | 'gpt5';
 
 export interface AIResponse {
   content: string;
@@ -45,6 +45,12 @@ export class AIProviderService {
           ...clientOptions
         });
         break;
+      case 'gpt5':
+        this.openaiClient = new OpenAI({
+          apiKey: this.apiKey,
+          ...clientOptions
+        });
+        break;
       case 'gemini':
         this.geminiClient = new GoogleGenerativeAI(this.apiKey);
         break;
@@ -71,6 +77,8 @@ export class AIProviderService {
         switch (this.provider) {
           case 'openai':
             return await this.generateOpenAIContent(prompt, systemPrompt);
+          case 'gpt5':
+            return await this.generateGPT5Content(prompt, systemPrompt);
           case 'gemini':
             return await this.generateGeminiContent(prompt, systemPrompt);
           case 'grok':
@@ -103,6 +111,8 @@ export class AIProviderService {
         switch (this.provider) {
           case 'openai':
             return await this.generateOpenAIStructuredContent(prompt, schema, systemPrompt);
+          case 'gpt5':
+            return await this.generateGPT5StructuredContent(prompt, schema, systemPrompt);
           case 'gemini':
             return await this.generateGeminiStructuredContent(prompt, schema, systemPrompt);
           case 'grok':
@@ -162,6 +172,54 @@ export class AIProviderService {
 
     const response = await this.openaiClient.chat.completions.create({
       model: "gpt-4o",
+      messages,
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    return content ? JSON.parse(content) : null;
+  }
+
+  private async generateGPT5Content(prompt: string, systemPrompt?: string): Promise<AIResponse> {
+    if (!this.openaiClient) throw new Error('OpenAI client not initialized');
+
+    const messages: any[] = [];
+    if (systemPrompt) {
+      messages.push({ role: "system", content: systemPrompt });
+    }
+    messages.push({ role: "user", content: prompt });
+
+    const response = await this.openaiClient.chat.completions.create({
+      model: "gpt-5-preview", // GPT-5 preview model
+      messages,
+    });
+
+    const aiResponse: AIResponse = {
+      content: response.choices[0]?.message?.content || '',
+    };
+
+    if (response.usage) {
+      aiResponse.usage = {
+        prompt_tokens: response.usage.prompt_tokens,
+        completion_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens,
+      };
+    }
+
+    return aiResponse;
+  }
+
+  private async generateGPT5StructuredContent(prompt: string, schema: any, systemPrompt?: string): Promise<any> {
+    if (!this.openaiClient) throw new Error('OpenAI client not initialized');
+
+    const messages: any[] = [];
+    if (systemPrompt) {
+      messages.push({ role: "system", content: systemPrompt });
+    }
+    messages.push({ role: "user", content: prompt });
+
+    const response = await this.openaiClient.chat.completions.create({
+      model: "gpt-5-preview",
       messages,
       response_format: { type: "json_object" },
     });

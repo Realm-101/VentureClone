@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Flame, Settings, User, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AIProviderModal } from "@/components/ai-provider-modal";
+import { AIProviderIcon } from "@/components/ai-provider-icon";
 import { URLAnalysisInput } from "@/components/url-analysis-input";
 import { WorkflowTabs } from "@/components/workflow-tabs";
 import { AIInsightsPanel } from "@/components/ai-insights-panel";
@@ -36,16 +37,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-vc-dark text-vc-text font-inter">
+    <div className="min-h-screen text-vc-text font-inter">
       {/* Header */}
-      <header className="bg-vc-card border-b border-vc-border" data-testid="header">
+      <header className="bg-vc-card/80 backdrop-blur-sm border-b border-vc-border" data-testid="header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo and Brand */}
             <div className="flex items-center space-x-3" data-testid="brand">
-              <div className="w-10 h-10 bg-gradient-to-r from-vc-primary to-vc-secondary rounded-lg flex items-center justify-center">
-                <Flame className="text-vc-text text-lg" />
-              </div>
+              <img 
+                src="/images/Headerlogo.png" 
+                alt="VentureClone AI Logo" 
+                className="h-10 w-auto object-contain"
+              />
               <div>
                 <h1 className="text-xl font-bold text-vc-text">VentureClone AI</h1>
                 <p className="text-xs text-vc-text-muted">Systematic Business Cloning Platform</p>
@@ -72,7 +75,10 @@ export default function Dashboard() {
                   onClick={() => setShowAIModal(true)}
                   data-testid="button-ai-provider"
                 >
-                  <span className="text-vc-accent">🤖</span>
+                  <AIProviderIcon 
+                    provider={activeProvider?.provider} 
+                    className="h-5 w-5 text-vc-accent"
+                  />
                   <span className="text-sm text-vc-text">
                     {activeProvider ? `${activeProvider.provider.toUpperCase()}` : 'No AI Provider'}
                   </span>

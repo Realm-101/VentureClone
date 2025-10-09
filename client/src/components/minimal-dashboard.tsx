@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAnalyses, useAnalyzeUrl, useApiErrorHandling } from '@/hooks/use-minimal-api';
 import { StructuredReport } from '@/components/StructuredReport';
 import { EnhancedAnalysisDisplay } from '@/components/enhanced-analysis-display';
+import ElectricBorder from '@/components/ElectricBorder';
+import { QuantumPulseLoader } from '@/components/quantum-pulse-loade';
 import type { AnalysisRecord } from '@/types/minimal-api';
 import type { EnhancedAnalysisRecord } from '@shared/schema';
 
@@ -96,20 +98,21 @@ function UrlInputForm({ onAnalysisStart, onAnalysisComplete }: UrlInputFormProps
             )}
           </div>
           
-          <Button 
-            type="submit" 
-            disabled={analyzeUrlMutation.isPending || !url.trim()}
-            className="w-full"
+          <ElectricBorder
+            color="#7df9ff"
+            speed={1}
+            chaos={0.5}
+            thickness={2}
+            style={{ borderRadius: 8, width: '100%' }}
           >
-            {analyzeUrlMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              'Analyze Business'
-            )}
-          </Button>
+            <Button 
+              type="submit" 
+              disabled={analyzeUrlMutation.isPending || !url.trim()}
+              className="w-full"
+            >
+              {analyzeUrlMutation.isPending ? 'Analyzing...' : 'Analyze Business'}
+            </Button>
+          </ElectricBorder>
 
           {analyzeUrlMutation.error && (
             <Alert variant="destructive">
@@ -224,10 +227,7 @@ function AnalysisList({ analyses, isLoading, error }: AnalysisListProps) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="ml-2">Loading analyses...</span>
-          </div>
+          <QuantumPulseLoader text="Loading" />
         </CardContent>
       </Card>
     );
@@ -268,14 +268,16 @@ export function MinimalDashboard() {
   const { data: analyses = [], isLoading, error } = useAnalyses();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Simple Header */}
-      <header className="border-b">
+      <header className="border-b backdrop-blur-sm bg-background/80">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Flame className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img 
+              src="/images/Headerlogo.png" 
+              alt="VentureClone AI Logo" 
+              className="h-8 w-auto object-contain"
+            />
             <div>
               <h1 className="text-xl font-bold">VentureClone AI</h1>
               <p className="text-sm text-muted-foreground">Business Analysis Tool</p>

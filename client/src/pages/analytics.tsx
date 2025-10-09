@@ -32,9 +32,9 @@ export function Analytics() {
     : analyses;
 
   return (
-    <div className="min-h-screen bg-vc-dark">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-vc-card border-b border-vc-border">
+      <header className="bg-vc-card/80 backdrop-blur-sm border-b border-vc-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">

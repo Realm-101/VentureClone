@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Search, Link, Bot } from "lucide-react";
+import { Search, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AIService } from "@/lib/ai-service";
+import { AIProviderIcon } from "@/components/ai-provider-icon";
+import ElectricBorder from "@/components/ElectricBorder";
 import type { BusinessAnalysis, SearchResult } from "@/types";
 
 interface URLAnalysisInputProps {
@@ -134,15 +136,23 @@ export function URLAnalysisInput({ onAnalysisComplete }: URLAnalysisInputProps) 
               />
               <Link className="absolute right-3 top-3 h-4 w-4 text-vc-text-muted" />
             </div>
-            <Button
-              onClick={handleAnalyze}
-              disabled={analyzeURLMutation.isPending || !url.trim()}
-              className="bg-vc-primary hover:bg-vc-primary/80 text-white px-6 font-semibold transition-colors shadow-neon"
-              data-testid="button-analyze"
+            <ElectricBorder
+              color="#7df9ff"
+              speed={1}
+              chaos={0.5}
+              thickness={2}
+              style={{ borderRadius: 8 }}
             >
-              <Search className="mr-2 h-4 w-4" />
-              {analyzeURLMutation.isPending ? 'Analyzing...' : 'Analyze'}
-            </Button>
+              <Button
+                onClick={handleAnalyze}
+                disabled={analyzeURLMutation.isPending || !url.trim()}
+                className="bg-vc-primary hover:bg-vc-primary/80 text-white px-6 font-semibold transition-colors shadow-neon"
+                data-testid="button-analyze"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                {analyzeURLMutation.isPending ? 'Analyzing...' : 'Analyze'}
+              </Button>
+            </ElectricBorder>
           </div>
 
           {/* AI Search */}
@@ -164,7 +174,10 @@ export function URLAnalysisInput({ onAnalysisComplete }: URLAnalysisInputProps) 
               className="absolute right-2 top-1/2 -translate-y-1/2 text-vc-accent hover:text-vc-accent/80 h-8 w-8"
               data-testid="button-ai-search"
             >
-              <Bot className="h-4 w-4" />
+              <AIProviderIcon 
+                provider={activeProvider?.provider} 
+                className="h-4 w-4"
+              />
             </Button>
           </div>
         </div>

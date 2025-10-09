@@ -93,12 +93,34 @@ export const enhancedStructuredAnalysisSchema = z.object({
       threats: z.array(z.string()),
     }),
   }),
-  // Enhanced technical section with confidence scoring
+  // Enhanced technical section with confidence scoring and tech detection
   technical: z.object({
     techStack: z.array(z.string()).optional(),
     confidence: z.number().min(0).max(1).optional(),
     uiColors: z.array(z.string()).optional(),
     keyPages: z.array(z.string()).optional(),
+    // Wappalyzer detection results
+    actualDetected: z.object({
+      technologies: z.array(z.object({
+        name: z.string(),
+        categories: z.array(z.string()),
+        confidence: z.number(),
+        version: z.string().optional(),
+        website: z.string().optional(),
+        icon: z.string().optional(),
+      })),
+      contentType: z.string(),
+      detectedAt: z.string(),
+    }).optional(),
+    // Complexity analysis
+    complexityScore: z.number().min(1).max(10).optional(),
+    complexityFactors: z.object({
+      customCode: z.boolean(),
+      frameworkComplexity: z.enum(['low', 'medium', 'high']),
+      infrastructureComplexity: z.enum(['low', 'medium', 'high']),
+    }).optional(),
+    // Merged tech stack (AI + Wappalyzer)
+    detectedTechStack: z.array(z.string()).optional(),
   }).optional(),
   // Enhanced data section with source attribution
   data: z.object({
@@ -124,6 +146,37 @@ export const enhancedStructuredAnalysisSchema = z.object({
 
 export type StructuredAnalysis = z.infer<typeof structuredAnalysisSchema>;
 export type EnhancedStructuredAnalysis = z.infer<typeof enhancedStructuredAnalysisSchema>;
+
+// Technology detection types
+export interface DetectedTechnology {
+  name: string;
+  categories: string[];
+  confidence: number;
+  version?: string;
+  website?: string;
+  icon?: string;
+}
+
+export interface ComplexityFactors {
+  customCode: boolean;
+  frameworkComplexity: 'low' | 'medium' | 'high';
+  infrastructureComplexity: 'low' | 'medium' | 'high';
+}
+
+export interface TechnicalAnalysis {
+  techStack?: string[];
+  confidence?: number;
+  uiColors?: string[];
+  keyPages?: string[];
+  actualDetected?: {
+    technologies: DetectedTechnology[];
+    contentType: string;
+    detectedAt: string;
+  };
+  complexityScore?: number;
+  complexityFactors?: ComplexityFactors;
+  detectedTechStack?: string[];
+}
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

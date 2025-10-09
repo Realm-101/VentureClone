@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Squares } from "@/components/ui/squares-background";
 
 // Lazy load experimental components to exclude them from bundle when disabled
 const Dashboard = isExperimentalEnabled() 
@@ -22,6 +23,10 @@ const Analytics = isExperimentalEnabled()
 const AIAssistant = isExperimentalEnabled() 
   ? React.lazy(() => import("@/components/ai-assistant").then(module => ({ default: module.AIAssistant })))
   : null;
+
+// Spiral animation demo - always available
+const SpiralDemoPage = React.lazy(() => import("@/pages/spiral-demo-page"));
+const LoaderDemo = React.lazy(() => import("@/components/LoaderDemo").then(module => ({ default: module.LoaderDemo })));
 
 /**
  * Error Boundary Component
@@ -93,7 +98,7 @@ class ErrorBoundary extends Component<
  */
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center space-y-2">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         <p className="text-muted-foreground">Loading...</p>
@@ -109,7 +114,16 @@ function LoadingFallback() {
 function Router() {
   // If experimental features are disabled, render Dashboard directly without routing
   if (!isExperimentalEnabled()) {
-    return <MinimalDashboard />;
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Switch>
+          <Route path="/spiral" component={SpiralDemoPage} />
+          <Route path="/loader-demo" component={LoaderDemo} />
+          <Route path="/" component={MinimalDashboard} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+    );
   }
 
   // Full feature set when experimental features are enabled
@@ -118,6 +132,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard!} />
         <Route path="/analytics" component={Analytics!} />
+        <Route path="/spiral" component={SpiralDemoPage} />
+        <Route path="/loader-demo" component={LoaderDemo} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -132,14 +148,28 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <div className={isExperimentalEnabled() ? "dark min-h-screen bg-vc-dark" : "min-h-screen"}>
-          <Toaster />
-          <Router />
-          {isExperimentalEnabled() && AIAssistant && (
-            <Suspense fallback={null}>
-              <AIAssistant />
-            </Suspense>
-          )}
+        <div className={isExperimentalEnabled() ? "dark min-h-screen relative" : "min-h-screen relative"} style={{ background: '#060606' }}>
+          {/* Animated checkered background */}
+          <div className="fixed inset-0 z-0 pointer-events-none">
+            <Squares 
+              direction="diagonal"
+              speed={0.5}
+              squareSize={40}
+              borderColor="#333"
+              hoverFillColor="#222"
+            />
+          </div>
+          
+          {/* Content layer */}
+          <div className="relative z-10 min-h-screen">
+            <Toaster />
+            <Router />
+            {isExperimentalEnabled() && AIAssistant && (
+              <Suspense fallback={null}>
+                <AIAssistant />
+              </Suspense>
+            )}
+          </div>
         </div>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Send, Sparkles, Bot, Zap } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { MessageCircle, X, Send, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AIProviderIcon } from "@/components/ai-provider-icon";
+import { AIService } from "@/lib/ai-service";
 
 interface Message {
   id: string;
@@ -70,6 +73,11 @@ export function AIAssistant() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: activeProvider } = useQuery({
+    queryKey: ['/api/ai-providers/active'],
+    queryFn: () => AIService.getActiveProvider(),
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -212,7 +220,10 @@ export function AIAssistant() {
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-vc-primary to-vc-secondary opacity-60" />
                   <div className="absolute inset-2 rounded-full bg-gradient-to-tr from-vc-accent to-vc-primary opacity-80" />
                   <div className="absolute inset-3 rounded-full bg-vc-dark flex items-center justify-center">
-                    <Bot className="h-8 w-8 text-vc-accent" />
+                    <AIProviderIcon 
+                      provider={activeProvider?.provider} 
+                      className="h-8 w-8 text-vc-accent"
+                    />
                   </div>
                 </div>
               </div>

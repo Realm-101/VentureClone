@@ -1,5 +1,8 @@
 import { Lightbulb, AlertTriangle, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AIProviderIcon } from "@/components/ai-provider-icon";
+import { AIService } from "@/lib/ai-service";
 import type { BusinessAnalysis } from "@/types";
 
 interface AIInsightsPanelProps {
@@ -9,12 +12,20 @@ interface AIInsightsPanelProps {
 export function AIInsightsPanel({ analysis }: AIInsightsPanelProps) {
   const insights = analysis.aiInsights;
 
+  const { data: activeProvider } = useQuery({
+    queryKey: ['/api/ai-providers/active'],
+    queryFn: () => AIService.getActiveProvider(),
+  });
+
   if (!insights) {
     return (
       <Card className="bg-vc-card border-vc-border" data-testid="card-ai-insights">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-vc-text">
-            <span className="text-vc-accent">🤖</span>
+            <AIProviderIcon 
+              provider={activeProvider?.provider} 
+              className="h-5 w-5 text-vc-accent"
+            />
             <span>AI Insights</span>
           </CardTitle>
         </CardHeader>
@@ -29,7 +40,10 @@ export function AIInsightsPanel({ analysis }: AIInsightsPanelProps) {
     <Card className="bg-vc-card border-vc-border" data-testid="card-ai-insights">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2 text-vc-text">
-          <span className="text-vc-accent">🤖</span>
+          <AIProviderIcon 
+            provider={activeProvider?.provider} 
+            className="h-5 w-5 text-vc-accent"
+          />
           <span>AI Insights</span>
         </CardTitle>
       </CardHeader>

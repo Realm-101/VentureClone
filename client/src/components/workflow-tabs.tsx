@@ -199,9 +199,7 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
     return (
       <div className="text-center py-12">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vc-primary/10 border-2 border-vc-primary mb-4">
-          <svg className="w-8 h-8 text-vc-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+          <img src="/logo.png" alt="VentureClone Logo" className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-semibold text-vc-text mb-2">Ready to Generate</h3>
         <p className="text-vc-text-muted mb-6 max-w-md mx-auto">

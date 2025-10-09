@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, X, Link } from "lucide-react";
+import { X, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AIService } from "@/lib/ai-service";
-import type { AIProvider } from "@/types";
 
 interface AIProviderModalProps {
   isOpen: boolean;
@@ -16,9 +14,7 @@ interface AIProviderModalProps {
 }
 
 export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'gemini' | 'grok'>('openai');
-  const [apiKey, setApiKey] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'gemini' | 'grok' | 'gpt5'>('openai');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   
   const { toast } = useToast();
@@ -43,21 +39,11 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
 
   const saveProviderMutation = useMutation({
     mutationFn: async (data: { provider: string; apiKey: string; isActive: boolean }) => {
-      // Check if provider already exists
-      const existingProvider = providers.find(p => p.provider === data.provider);
-      
-      if (existingProvider) {
-        return await AIService.updateProvider(existingProvider.id, {
-          apiKey: data.apiKey,
-          isActive: data.isActive
-        });
-      } else {
-        return await AIService.saveProvider({
-          provider: data.provider as any,
-          apiKey: data.apiKey,
-          isActive: data.isActive
-        });
-      }
+      return await AIService.saveProvider({
+        provider: data.provider as any,
+        apiKey: data.apiKey,
+        isActive: data.isActive
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-providers'] });
@@ -68,10 +54,11 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
       });
       onClose();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Save provider error:', error);
       toast({
         title: "Error",
-        description: "Failed to save AI provider configuration",
+        description: error?.message || "Failed to save AI provider configuration",
         variant: "destructive",
       });
     },
@@ -106,18 +93,19 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
     }
   };
 
-  const handleSave = () => {
-    // Since we're using environment variables, just close the modal
-    toast({
-      title: "Info",
-      description: `Using ${selectedProvider.toUpperCase()} from environment configuration`,
-    });
-    onClose();
+  const handleSave = async () => {
+    try {
+      await saveProviderMutation.mutateAsync({
+        provider: selectedProvider,
+        apiKey: '',
+        isActive: true
+      });
+    } catch (error) {
+      // Error is handled by mutation's onError
+    }
   };
 
   const handleClose = () => {
-    setApiKey('');
-    setShowPassword(false);
     onClose();
   };
 
@@ -147,18 +135,21 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
             <Label className="text-sm font-medium text-vc-text mb-2">AI Provider</Label>
             <Select 
               value={selectedProvider} 
-              onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'gemini' | 'grok')}
+              onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'gemini' | 'grok' | 'gpt5')}
               className="w-full bg-vc-dark border-vc-border text-vc-text focus:border-vc-primary" 
               data-testid="select-provider"
             >
               {providers.some(p => p.provider === 'gemini') && (
-                <SelectItem value="gemini" className="text-vc-text">Google Gemini 2.5 Pro</SelectItem>
+                <SelectItem value="gemini">Google Gemini 2.5 Pro</SelectItem>
               )}
               {providers.some(p => p.provider === 'openai') && (
-                <SelectItem value="openai" className="text-vc-text">OpenAI GPT-4</SelectItem>
+                <SelectItem value="openai">OpenAI GPT-4</SelectItem>
+              )}
+              {providers.some(p => p.provider === 'gpt5') && (
+                <SelectItem value="gpt5">OpenAI GPT-5 Preview</SelectItem>
               )}
               {providers.some(p => p.provider === 'grok') && (
-                <SelectItem value="grok" className="text-vc-text">xAI Grok 4 Fast Reasoning</SelectItem>
+                <SelectItem value="grok">xAI Grok 4 Fast Reasoning</SelectItem>
               )}
             </Select>
             <p className="text-xs text-vc-text-muted mt-1">
@@ -181,11 +172,20 @@ export function AIProviderModal({ isOpen, onClose }: AIProviderModalProps) {
 
         <div className="flex space-x-3 mt-6">
           <Button
-            className="flex-1 bg-vc-primary hover:bg-vc-primary/80 text-white transition-colors shadow-neon"
+            variant="outline"
+            className="flex-1"
             onClick={handleClose}
-            data-testid="button-close"
+            data-testid="button-cancel"
           >
-            Close
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 bg-vc-primary hover:bg-vc-primary/80 text-white transition-colors shadow-neon"
+            onClick={handleSave}
+            disabled={saveProviderMutation.isPending}
+            data-testid="button-save"
+          >
+            {saveProviderMutation.isPending ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </DialogContent>

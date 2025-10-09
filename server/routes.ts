@@ -10,6 +10,8 @@ import { fetchFirstParty, fetchFirstPartyWithRetry } from "./lib/fetchFirstParty
 import { ValidationService } from "./lib/validation";
 import { BusinessImprovementService } from "./services/business-improvement";
 import { ExportService } from "./services/export-service";
+import { TechDetectionService, type TechDetectionResult } from "./services/tech-detection.js";
+import { ComplexityCalculator } from "./services/complexity-calculator.js";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -21,9 +23,22 @@ function isValidUrl(string: string): boolean {
   }
 }
 
-// Helper function to get the active AI provider based on environment variables
-// Priority: Gemini > Grok > OpenAI (matches workflow generation logic)
-function getActiveAIProvider(): { provider: AIProvider; apiKey: string } | null {
+// Store user provider preferences in memory
+const userProviderPreferences = new Map<string, AIProvider>();
+
+// Helper function to get the active AI provider based on user preference or environment variables
+// Priority: User preference > Gemini > Grok > OpenAI
+function getActiveAIProvider(userId?: string): { provider: AIProvider; apiKey: string } | null {
+  // Check user preference first
+  if (userId && userProviderPreferences.has(userId)) {
+    const preferredProvider = userProviderPreferences.get(userId)!;
+    const apiKey = getApiKeyForProvider(preferredProvider);
+    if (apiKey) {
+      return { provider: preferredProvider, apiKey };
+    }
+  }
+  
+  // Fall back to environment variable priority
   if (process.env.GEMINI_API_KEY) {
     return { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY };
   } else if (process.env.GROK_API_KEY) {
@@ -32,6 +47,22 @@ function getActiveAIProvider(): { provider: AIProvider; apiKey: string } | null 
     return { provider: 'openai', apiKey: process.env.OPENAI_API_KEY };
   }
   return null;
+}
+
+// Helper function to get API key for a specific provider
+function getApiKeyForProvider(provider: AIProvider): string | null {
+  switch (provider) {
+    case 'gemini':
+      return process.env.GEMINI_API_KEY || null;
+    case 'grok':
+      return process.env.GROK_API_KEY || null;
+    case 'openai':
+      return process.env.OPENAI_API_KEY || null;
+    case 'gpt5':
+      return process.env.GPT5_API_KEY || null;
+    default:
+      return null;
+  }
 }
 
 
@@ -245,46 +276,165 @@ async function manageConcurrentAnalysis<T>(
   return analysisPromise;
 }
 
+/**
+ * Merges AI analysis results with tech detection results
+ * Requirements: 1.5, 2.3, 3.5, 5.6
+ * 
+ * Combines AI-inferred tech stack with Wappalyzer-detected technologies
+ * Calculates complexity score based on detected technologies
+ * Preserves both results for comparison and validation
+ */
+function mergeAnalysisResults(
+  aiAnalysis: StructuredAnalysis | EnhancedStructuredAnalysis,
+  techDetection: TechDetectionResult | null
+): StructuredAnalysis | EnhancedStructuredAnalysis {
+  // If no tech detection, return AI analysis as-is
+  if (!techDetection || !techDetection.success) {
+    console.log("No tech detection results to merge, returning AI-only analysis");
+    return aiAnalysis;
+  }
+
+  console.log("Merging AI analysis with tech detection results...");
+  
+  // Calculate complexity score
+  const complexityCalculator = new ComplexityCalculator();
+  const complexityResult = complexityCalculator.calculateComplexity(techDetection.technologies);
+  
+  // Extract tech names from detected technologies
+  const detectedTechNames = techDetection.technologies.map(t => t.name);
+  
+  // Combine AI-inferred and detected tech stacks (remove duplicates)
+  const aiTechStack = aiAnalysis.technical?.techStack || [];
+  const mergedTechStack = Array.from(new Set([...aiTechStack, ...detectedTechNames]));
+  
+  // Create enhanced technical section
+  const enhancedTechnical = {
+    ...(aiAnalysis.technical || {}),
+    // Preserve AI-inferred tech stack
+    techStack: aiTechStack,
+    // Add Wappalyzer detection results
+    actualDetected: {
+      technologies: techDetection.technologies,
+      contentType: techDetection.contentType,
+      detectedAt: techDetection.detectedAt,
+    },
+    // Add complexity analysis
+    complexityScore: complexityResult.score,
+    complexityFactors: complexityResult.factors,
+    // Add merged tech stack
+    detectedTechStack: mergedTechStack,
+  };
+  
+  console.log("Merge complete:", {
+    aiTechCount: aiTechStack.length,
+    detectedTechCount: detectedTechNames.length,
+    mergedTechCount: mergedTechStack.length,
+    complexityScore: complexityResult.score,
+  });
+  
+  // Return merged analysis
+  return {
+    ...aiAnalysis,
+    technical: enhancedTechnical,
+  };
+}
+
 // Multi-provider analysis with enhanced evidence-based prompts and concurrency management
-async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis }> {
+// Now includes parallel tech detection for improved accuracy
+async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis; techDetection?: TechDetectionResult }> {
   const analysisKey = `${url}-${firstPartyData ? 'with-fp' : 'no-fp'}`;
   
   return manageConcurrentAnalysis(analysisKey, async () => {
-    // Try Grok first (temporary workaround while debugging Gemini)
-    try {
-      console.log("Attempting enhanced analysis with Grok...");
-      return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
-    } catch (grokError) {
-      console.warn("Grok analysis failed, falling back to Gemini:", grokError);
-      
-      // Fallback to Gemini
-      try {
-        console.log("Attempting enhanced analysis with Gemini (gemini-2.5-flash)...");
-        return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
-      } catch (geminiError) {
-        console.error("Both Grok and Gemini failed:", { grokError, geminiError });
-        
-        // Handle timeout errors specifically
-        if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
-          throw new AppError("AI provider request timeout. The analysis is taking longer than expected. Please try again.", 504, 'GATEWAY_TIMEOUT');
+    const startTime = Date.now();
+    
+    // Check if tech detection is enabled via feature flag
+    const techDetectionEnabled = process.env.ENABLE_TECH_DETECTION !== 'false'; // Enabled by default
+    
+    // Run AI analysis and tech detection in parallel using Promise.allSettled
+    // This ensures one failure doesn't block the other
+    const [aiResult, techResult] = await Promise.allSettled([
+      // AI Analysis
+      (async () => {
+        try {
+          console.log("Attempting enhanced analysis with Grok...");
+          return await analyzeUrlWithProvider(url, 'grok', firstPartyData);
+        } catch (grokError) {
+          console.warn("Grok analysis failed, falling back to Gemini:", grokError);
+          
+          // Fallback to Gemini
+          try {
+            console.log("Attempting enhanced analysis with Gemini (gemini-2.5-flash)...");
+            return await analyzeUrlWithProvider(url, 'gemini', firstPartyData);
+          } catch (geminiError) {
+            console.error("Both Grok and Gemini failed:", { grokError, geminiError });
+            
+            // Handle timeout errors specifically
+            if (geminiError instanceof Error && geminiError.message.includes('timeout')) {
+              throw new AppError("AI provider request timeout. The analysis is taking longer than expected. Please try again.", 504, 'GATEWAY_TIMEOUT');
+            }
+            
+            // Provide detailed error information
+            const grokErrorMsg = grokError instanceof Error ? grokError.message : 'Unknown error';
+            const geminiErrorMsg = geminiError instanceof Error ? geminiError.message : 'Unknown error';
+            
+            console.error("Detailed errors:", {
+              grok: grokErrorMsg,
+              gemini: geminiErrorMsg
+            });
+            
+            throw new AppError(
+              `Both AI providers failed. Grok: ${grokErrorMsg}. Gemini: ${geminiErrorMsg}`, 
+              502, 
+              'AI_PROVIDER_DOWN'
+            );
+          }
         }
-        
-        // Provide detailed error information
-        const grokErrorMsg = grokError instanceof Error ? grokError.message : 'Unknown error';
-        const geminiErrorMsg = geminiError instanceof Error ? geminiError.message : 'Unknown error';
-        
-        console.error("Detailed errors:", {
-          grok: grokErrorMsg,
-          gemini: geminiErrorMsg
-        });
-        
-        throw new AppError(
-          `Both AI providers failed. Grok: ${grokErrorMsg}. Gemini: ${geminiErrorMsg}`, 
-          502, 
-          'AI_PROVIDER_DOWN'
-        );
-      }
+      })(),
+      
+      // Tech Detection (only if enabled)
+      techDetectionEnabled ? (async () => {
+        try {
+          console.log("Starting parallel tech detection...");
+          const techService = new TechDetectionService();
+          const detection = await techService.detectTechnologies(url);
+          console.log("Tech detection completed:", detection ? `${detection.technologies.length} technologies detected` : 'failed');
+          return detection;
+        } catch (techError) {
+          console.warn("Tech detection failed with exception:", techError);
+          return null;
+        }
+      })() : Promise.resolve(null)
+    ]);
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`Parallel analysis completed in ${totalTime}ms`);
+    
+    // Handle AI analysis result
+    if (aiResult.status === 'rejected') {
+      console.error("AI analysis failed:", aiResult.reason);
+      throw aiResult.reason;
     }
+    
+    const aiAnalysis = aiResult.value;
+    
+    // Handle tech detection result (graceful fallback)
+    let techDetection: TechDetectionResult | null = null;
+    if (techResult.status === 'fulfilled') {
+      techDetection = techResult.value;
+      if (techDetection) {
+        console.log("Tech detection succeeded, will merge with AI analysis");
+      } else {
+        console.warn("Tech detection returned null, using AI-only analysis");
+      }
+    } else {
+      console.warn("Tech detection failed:", techResult.reason);
+    }
+    
+    // Return combined result
+    return {
+      ...aiAnalysis,
+      techDetection: techDetection || undefined
+    };
   });
 }
 
@@ -334,12 +484,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      if (process.env.GPT5_API_KEY) {
+        providers.push({
+          id: 'gpt5',
+          provider: 'gpt5',
+          apiKey: '***',
+          isActive: !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY,
+          userId: req.userId
+        });
+      }
+      
       if (process.env.GROK_API_KEY) {
         providers.push({
           id: 'grok',
           provider: 'grok',
           apiKey: '***',
-          isActive: !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY,
+          isActive: !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GPT5_API_KEY,
           userId: req.userId
         });
       }
@@ -354,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/ai-providers/active - Get the active AI provider
   app.get("/api/ai-providers/active", async (req, res, next) => {
     try {
-      const activeProvider = getActiveAIProvider();
+      const activeProvider = getActiveAIProvider(req.userId);
       
       if (activeProvider) {
         res.json({
@@ -373,14 +533,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // POST /api/ai-providers - Save AI provider configuration (no-op for env-based config)
+  // POST /api/ai-providers - Save AI provider configuration
   app.post("/api/ai-providers", async (req, res, next) => {
     try {
-      // Since we're using environment variables, this is a no-op
-      // Just return success to keep the UI happy
+      console.log('POST /api/ai-providers - Request body:', req.body);
+      const { provider } = req.body;
+      
+      if (!req.userId) {
+        console.error('POST /api/ai-providers - No userId');
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      console.log('POST /api/ai-providers - Provider:', provider, 'UserId:', req.userId);
+      
+      // Validate that the provider has an API key configured
+      const apiKey = getApiKeyForProvider(provider);
+      console.log('POST /api/ai-providers - API key found:', !!apiKey);
+      
+      if (!apiKey) {
+        console.error(`POST /api/ai-providers - No API key for ${provider}`);
+        return res.status(400).json({ error: `${provider} API key not configured in environment` });
+      }
+      
+      // Save user's provider preference
+      userProviderPreferences.set(req.userId, provider);
+      console.log('POST /api/ai-providers - Saved preference for user:', req.userId);
+      
       res.json({
-        id: req.body.provider,
-        provider: req.body.provider,
+        id: provider,
+        provider: provider,
         apiKey: '***',
         isActive: true,
         userId: req.userId
@@ -391,14 +572,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // PATCH /api/ai-providers/:id - Update AI provider (no-op for env-based config)
+  // PATCH /api/ai-providers/:id - Update AI provider
   app.patch("/api/ai-providers/:id", async (req, res, next) => {
     try {
-      // Since we're using environment variables, this is a no-op
-      // Just return success to keep the UI happy
+      const provider = req.params.id as AIProvider;
+      
+      if (!req.userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Validate that the provider has an API key configured
+      const apiKey = getApiKeyForProvider(provider);
+      if (!apiKey) {
+        return res.status(400).json({ error: `${provider} API key not configured in environment` });
+      }
+      
+      // Save user's provider preference
+      userProviderPreferences.set(req.userId, provider);
+      
       res.json({
-        id: req.params.id,
-        provider: req.params.id,
+        id: provider,
+        provider: provider,
         apiKey: '***',
         isActive: true,
         userId: req.userId
@@ -534,7 +728,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       firstPartyData = await Promise.race([firstPartyPromise, firstPartyTimeout]);
 
       // Perform AI analysis with multi-provider support, including first-party context
+      // Now includes parallel tech detection
       const analysisResult = await analyzeUrlWithAI(url, firstPartyData || undefined);
+
+      // Merge AI analysis with tech detection results
+      let mergedStructured = analysisResult.structured;
+      if (analysisResult.structured && analysisResult.techDetection) {
+        console.log("Merging tech detection results with AI analysis...");
+        mergedStructured = mergeAnalysisResults(analysisResult.structured, analysisResult.techDetection);
+      } else if (!analysisResult.techDetection) {
+        console.log("No tech detection results available, using AI-only analysis");
+      }
 
       // Save analysis to storage with structured data and first-party data
       try {
@@ -544,8 +748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           model: analysisResult.model,
         };
         
-        if (analysisResult.structured) {
-          analysisInput.structured = analysisResult.structured;
+        if (mergedStructured) {
+          analysisInput.structured = mergedStructured;
         }
         
         if (firstPartyData) {
@@ -643,7 +847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create AI provider service for improvement generation
-      const activeProvider = getActiveAIProvider();
+      const activeProvider = getActiveAIProvider(req.userId);
       if (!activeProvider) {
         throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
       }
@@ -909,7 +1113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create AI provider service
-      const activeProvider = getActiveAIProvider();
+      const activeProvider = getActiveAIProvider(req.userId);
       if (!activeProvider) {
         throw new AppError("No AI provider API key available", 500, 'CONFIG_MISSING');
       }
