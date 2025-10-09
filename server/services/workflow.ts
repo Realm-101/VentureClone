@@ -380,9 +380,31 @@ Respond ONLY with valid JSON.`;
     const businessName = analysis.businessModel || analysis.url;
     const valueProposition = analysis.structured?.overview?.valueProposition || 'Unknown';
     const monetization = analysis.structured?.overview?.monetization || 'Unknown';
-    const techStack = analysis.structured?.technical?.techStack?.join(', ') || 'Unknown';
     const targetAudience = analysis.structured?.overview?.targetAudience || 'Unknown';
     const keyFeatures = analysis.structured?.technical?.keyFeatures?.join(', ') || 'Unknown';
+
+    // Get tech stack information - prioritize detected over inferred
+    const detectedTech = analysis.structured?.technical?.actualDetected?.technologies || [];
+    const inferredTechStack = analysis.structured?.technical?.techStack || [];
+    const complexityScore = analysis.structured?.technical?.complexityScore;
+    
+    let techStackInfo = '';
+    if (detectedTech.length > 0) {
+      const techNames = detectedTech.map((t: any) => 
+        t.version ? `${t.name} ${t.version}` : t.name
+      ).join(', ');
+      techStackInfo = `Detected Technologies (via Wappalyzer): ${techNames}`;
+      if (inferredTechStack.length > 0) {
+        techStackInfo += `\nAI-Inferred Technologies: ${inferredTechStack.join(', ')}`;
+      }
+      if (complexityScore) {
+        techStackInfo += `\nTechnical Complexity Score: ${complexityScore}/10`;
+      }
+    } else if (inferredTechStack.length > 0) {
+      techStackInfo = `AI-Inferred Technologies: ${inferredTechStack.join(', ')}`;
+    } else {
+      techStackInfo = 'Unknown';
+    }
 
     // Get Stage 2 data if available for context
     const stage2Data = analysis.stages?.[2]?.content;
@@ -406,10 +428,14 @@ BUSINESS CONTEXT:
 - Business: ${businessName}
 - Value Proposition: ${valueProposition}
 - Monetization: ${monetization}
-- Current Tech Stack: ${techStack}
 - Target Audience: ${targetAudience}
 - Key Features: ${keyFeatures}
 - URL: ${analysis.url}
+
+TECHNOLOGY STACK ANALYSIS:
+${techStackInfo}
+
+IMPORTANT: When recommending a tech stack for the MVP, consider the detected technologies above. If actual technologies were detected via Wappalyzer, use them as a strong signal for what works for this type of business. Recommend compatible or similar technologies that align with the detected stack.
 
 STAGE 2 CONTEXT (Lazy-Entrepreneur Filter):
 - Effort Score: ${effortScore}/10
@@ -482,6 +508,9 @@ REQUIREMENTS:
   * Frontend: Specific framework (React, Vue, Next.js) + styling solution (Tailwind, CSS-in-JS)
   * Backend: Specific runtime and framework (Node.js + Express, Python + FastAPI, etc.)
   * Infrastructure: Specific hosting (Vercel, Railway, AWS), database (PostgreSQL, MongoDB), and key services
+  * **IMPORTANT**: If detected technologies are available, strongly consider recommending the same or compatible technologies
+  * If the detected stack includes specific frameworks/tools, explain why you're recommending them (or alternatives)
+  * Consider the complexity score - higher scores may indicate more sophisticated tech requirements
   * Consider the automation score - recommend no-code/low-code where appropriate
   * Prioritize technologies that accelerate development
   
@@ -791,6 +820,34 @@ Respond ONLY with valid JSON.`;
     const monetization = analysis.structured?.overview?.monetization || 'Unknown';
     const targetAudience = analysis.structured?.overview?.targetAudience || 'Unknown';
 
+    // Get tech stack information - prioritize detected over inferred
+    const detectedTech = analysis.structured?.technical?.actualDetected?.technologies || [];
+    const inferredTechStack = analysis.structured?.technical?.techStack || [];
+    const complexityScore = analysis.structured?.technical?.complexityScore;
+    
+    let techStackInfo = '';
+    if (detectedTech.length > 0) {
+      const techNames = detectedTech.map((t: any) => 
+        t.version ? `${t.name} ${t.version}` : t.name
+      ).join(', ');
+      const categoriesSet = new Set(detectedTech.flatMap((t: any) => t.categories || []));
+      const categories = Array.from(categoriesSet).join(', ');
+      techStackInfo = `Detected Technologies (via Wappalyzer): ${techNames}`;
+      if (categories) {
+        techStackInfo += `\nTechnology Categories: ${categories}`;
+      }
+      if (inferredTechStack.length > 0) {
+        techStackInfo += `\nAI-Inferred Technologies: ${inferredTechStack.join(', ')}`;
+      }
+      if (complexityScore) {
+        techStackInfo += `\nTechnical Complexity Score: ${complexityScore}/10`;
+      }
+    } else if (inferredTechStack.length > 0) {
+      techStackInfo = `AI-Inferred Technologies: ${inferredTechStack.join(', ')}`;
+    } else {
+      techStackInfo = 'Unknown';
+    }
+
     // Get Stage 2 data for context
     const stage2Data = analysis.stages?.[2]?.content;
     const automationPotential = stage2Data?.automationPotential?.score || 'Unknown';
@@ -799,7 +856,7 @@ Respond ONLY with valid JSON.`;
     // Get Stage 3 data for context
     const stage3Data = analysis.stages?.[3]?.content;
     const coreFeatures = stage3Data?.coreFeatures?.join(', ') || 'Unknown';
-    const techStack = stage3Data?.techStack ? 
+    const mvpTechStack = stage3Data?.techStack ? 
       `Frontend: ${stage3Data.techStack.frontend?.join(', ')}, Backend: ${stage3Data.techStack.backend?.join(', ')}` : 
       'Unknown';
 
@@ -819,13 +876,22 @@ BUSINESS CONTEXT:
 - Target Audience: ${targetAudience}
 - URL: ${analysis.url}
 
+TECHNOLOGY STACK ANALYSIS:
+${techStackInfo}
+
+IMPORTANT: When recommending AI automation tools and integrations, consider the detected technologies above. If actual technologies were detected via Wappalyzer, recommend automation tools that integrate well with those specific technologies. For example:
+- If WordPress is detected, recommend WordPress-specific AI plugins
+- If Shopify is detected, recommend Shopify AI apps and integrations
+- If React/Next.js is detected, recommend JavaScript-based AI SDKs
+- If specific analytics tools are detected, recommend AI tools that integrate with them
+
 STAGE 2 CONTEXT (Lazy-Entrepreneur Filter):
 - Automation Potential Score: ${automationPotential}
 - Initial Opportunities: ${automationOpportunities}
 
 STAGE 3 CONTEXT (MVP Launch Planning):
 - Core Features: ${coreFeatures}
-- Tech Stack: ${techStack}
+- MVP Tech Stack: ${mvpTechStack}
 
 STAGE 5 CONTEXT (Scaling & Growth):
 - Growth Channels: ${growthChannels}
@@ -915,10 +981,16 @@ GUIDELINES:
 - Consider the business model and target audience when recommending tools
 - Include both customer-facing (chatbots, personalization) and internal (analytics, reporting) automations
 - Recommend no-code/low-code solutions where possible (Zapier, Make, n8n)
-- Consider the tech stack from Stage 3 when recommending integrations
+- **CRITICAL**: Consider the detected technologies when recommending integrations
+  * If specific platforms are detected (WordPress, Shopify, etc.), recommend platform-specific AI tools
+  * If specific frameworks are detected (React, Vue, etc.), recommend compatible AI SDKs and libraries
+  * If specific analytics/marketing tools are detected, recommend AI tools that integrate with them
+  * Match automation recommendations to the actual tech stack for easier implementation
+- Consider the MVP tech stack from Stage 3 when recommending integrations
 - Balance quick wins (easy to implement) with long-term strategic automations
 - Include specific ROI metrics (% cost reduction, hours saved, revenue increase)
 - Consider the automation potential score from Stage 2
+- Consider the complexity score - higher complexity may require more sophisticated automation tools
 - Emphasize tools that scale with the business (from Stage 5 context)
 - Recommend automations that free up time for high-value activities
 - Include both AI-powered tools and traditional automation platforms

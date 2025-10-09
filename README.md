@@ -16,6 +16,7 @@ VentureClone AI is a comprehensive business analysis platform that helps entrepr
 ### Recent Enhancements (v3.0 - January 2025)
 
 - ✅ **6-Stage Workflow System**: Complete business cloning workflow from discovery to AI automation
+- ✅ **Technology Detection Integration**: Wappalyzer-powered accurate tech stack detection with complexity scoring
 - ✅ **Enhanced Export Functionality**: PDF, HTML, and JSON exports for all stages and complete plans
 - ✅ **Business Improvement Generator**: AI-powered improvement suggestions with actionable 7-day plans
 - ✅ **Multi-Provider AI Support**: Gemini 2.5 Pro and Grok 4 Fast Reasoning with 120-second timeouts
@@ -56,6 +57,8 @@ VentureClone AI is a comprehensive business analysis platform that helps entrepr
 - **Performance Monitoring**: Real-time metrics tracking and health reporting
 
 **Enhanced Services**:
+- **TechDetectionService**: Wappalyzer-based technology detection with retry logic and fallback
+- **ComplexityCalculator**: Automated complexity scoring (1-10 scale) based on detected technologies
 - **BusinessImprovementService**: AI-powered improvement generation with validation
 - **Enhanced AI Providers**: Evidence-based prompts with confidence scoring
 - **Performance Monitor**: System health tracking with threshold alerts
@@ -312,6 +315,15 @@ VentureClone AI guides you through a systematic 6-stage process:
 - **Professional Formatting**: Clean, readable exports suitable for sharing
 
 ### Advanced Features
+
+#### Technology Detection
+
+- **Accurate Tech Stack Detection**: Wappalyzer-powered fingerprinting of actual technologies
+- **Complexity Scoring**: Automated 1-10 complexity score based on detected tech stack
+- **Parallel Execution**: Runs alongside AI analysis with minimal performance impact
+- **Graceful Fallback**: Automatically falls back to AI-only analysis if detection fails
+- **Enhanced AI Prompts**: Detected technologies inform Stage 3 and Stage 6 recommendations
+- **Feature Flag Control**: Can be disabled via `ENABLE_TECH_DETECTION=false` for troubleshooting
 
 #### Business Improvement Generation
 

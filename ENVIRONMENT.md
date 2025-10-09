@@ -70,6 +70,7 @@ The application is designed with flexibility in mind, supporting:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `VITE_ENABLE_EXTRAS` | No | `0` | Enable experimental features (`0` or `1`) |
+| `ENABLE_TECH_DETECTION` | No | `true` | Enable Wappalyzer technology detection (`true` or `false`) |
 
 #### Feature Flag Behavior
 
@@ -85,6 +86,21 @@ The application is designed with flexibility in mind, supporting:
 - AI assistant and batch analysis
 - Larger bundle size
 
+**Technology Detection (`ENABLE_TECH_DETECTION`)**
+
+**Enabled (`ENABLE_TECH_DETECTION=true`, default)**
+- Provides accurate technology stack detection using Wappalyzer
+- Enhances AI recommendations with real technology data
+- Improves complexity scoring accuracy
+- Runs in parallel with AI analysis for minimal performance impact
+- Falls back to AI-only analysis if detection fails
+
+**Disabled (`ENABLE_TECH_DETECTION=false`)**
+- Uses AI-only analysis for tech stack inference
+- Reduces external dependencies
+- Useful for troubleshooting or phased rollout
+- Graceful fallback ensures no disruption to user experience
+
 ## Configuration Examples
 
 ### Development Setup
@@ -96,6 +112,7 @@ PORT=5000
 STORAGE=mem
 GEMINI_API_KEY=your_gemini_key_here
 VITE_ENABLE_EXTRAS=0
+ENABLE_TECH_DETECTION=true
 ```
 
 ### Production Setup (Memory Storage)
@@ -108,6 +125,7 @@ STORAGE=mem
 GEMINI_API_KEY=your_gemini_key_here
 OPENAI_API_KEY=your_openai_key_here
 VITE_ENABLE_EXTRAS=0
+ENABLE_TECH_DETECTION=true
 ```
 
 ### Production Setup (Database Storage)
@@ -121,6 +139,7 @@ DATABASE_URL=postgresql://user:password@host:port/database
 GEMINI_API_KEY=your_gemini_key_here
 OPENAI_API_KEY=your_openai_key_here
 VITE_ENABLE_EXTRAS=0
+ENABLE_TECH_DETECTION=true
 ```
 
 ## Storage Switching Guide

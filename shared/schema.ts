@@ -54,6 +54,28 @@ export const structuredAnalysisSchema = z.object({
     techStack: z.array(z.string()).optional(),
     uiColors: z.array(z.string()).optional(),
     keyPages: z.array(z.string()).optional(),
+    // Tech detection fields (for backward compatibility)
+    actualDetected: z.object({
+      technologies: z.array(z.object({
+        name: z.string(),
+        categories: z.array(z.string()),
+        confidence: z.number(),
+        version: z.string().optional(),
+        website: z.string().optional(),
+        icon: z.string().optional(),
+      })),
+      contentType: z.string(),
+      detectedAt: z.string(),
+    }).optional(),
+    complexityScore: z.number().min(1).max(10).optional(),
+    complexityFactors: z.object({
+      customCode: z.boolean(),
+      frameworkComplexity: z.enum(['low', 'medium', 'high']),
+      infrastructureComplexity: z.enum(['low', 'medium', 'high']),
+    }).optional(),
+    detectedTechStack: z.array(z.string()).optional(),
+    detectionAttempted: z.boolean().optional(),
+    detectionFailed: z.boolean().optional(),
   }).optional(),
   data: z.object({
     trafficEstimates: z.object({
@@ -121,6 +143,9 @@ export const enhancedStructuredAnalysisSchema = z.object({
     }).optional(),
     // Merged tech stack (AI + Wappalyzer)
     detectedTechStack: z.array(z.string()).optional(),
+    // Detection status flags
+    detectionAttempted: z.boolean().optional(),
+    detectionFailed: z.boolean().optional(),
   }).optional(),
   // Enhanced data section with source attribution
   data: z.object({

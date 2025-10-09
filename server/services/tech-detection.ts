@@ -1,5 +1,6 @@
 import Wappalyzer from 'simple-wappalyzer';
 import { nanoid } from 'nanoid';
+import { PerformanceMonitor } from './performance-monitor.js';
 
 /**
  * Represents a detected technology from Wappalyzer
@@ -45,6 +46,7 @@ interface TechDetectionLog {
 export class TechDetectionService {
   private readonly timeout: number = 15000; // 15 seconds
   private readonly maxRetries: number = 1; // Single retry on failure
+  private readonly performanceMonitor = PerformanceMonitor.getInstance();
 
   /**
    * Detects technologies used by a website with retry logic
@@ -96,6 +98,9 @@ export class TechDetectionService {
 
         const duration = Date.now() - startTime;
         this.logSuccess(requestId, url, technologies.length, duration);
+        
+        // Record performance metrics
+        this.performanceMonitor.recordDetection(duration, true, technologies.length, false);
 
         return {
           technologies,
@@ -122,6 +127,10 @@ export class TechDetectionService {
     // All attempts failed
     const duration = Date.now() - startTime;
     this.logError(requestId, url, lastError?.message || 'Unknown error', duration);
+    
+    // Record performance metrics for failure
+    this.performanceMonitor.recordDetection(duration, false, 0, false);
+    
     return null;
   }
 

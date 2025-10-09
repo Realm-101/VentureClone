@@ -15,6 +15,7 @@ import { BusinessImprovement } from "@/components/business-improvement";
 import { StructuredReport } from "@/components/StructuredReport";
 import { ExportCompletePlan } from "@/components/export-complete-plan";
 import { ExportDropdown } from "@/components/export-dropdown";
+import { TechnologyStack } from "@/components/technology-stack";
 import type { BusinessAnalysis, WorkflowStage } from "@/types";
 import type { EnhancedAnalysisRecord } from "@shared/schema";
 
@@ -428,6 +429,17 @@ export function WorkflowTabs({ analysis }: WorkflowTabsProps) {
         {analysis.structured && (
           <div className="mt-6">
             <StructuredReport data={analysis.structured} url={analysis.url} />
+          </div>
+        )}
+
+        {/* Technology Stack Analysis - Requirements 6.1, 6.2, 6.3, 6.4, 6.5 */}
+        {(analysis.structured?.technical?.techStack || analysis.structured?.technical?.actualDetected) && (
+          <div className="mt-6">
+            <TechnologyStack
+              aiInferredTech={analysis.structured?.technical?.techStack || undefined}
+              detectedTech={analysis.structured?.technical?.actualDetected || undefined}
+              complexityScore={analysis.structured?.technical?.complexityScore || undefined}
+            />
           </div>
         )}
 

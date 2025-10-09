@@ -12,6 +12,7 @@ import { BusinessImprovementService } from "./services/business-improvement";
 import { ExportService } from "./services/export-service";
 import { TechDetectionService, type TechDetectionResult } from "./services/tech-detection.js";
 import { ComplexityCalculator } from "./services/complexity-calculator.js";
+import { PerformanceMonitor } from "./services/performance-monitor.js";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -341,7 +342,7 @@ function mergeAnalysisResults(
 
 // Multi-provider analysis with enhanced evidence-based prompts and concurrency management
 // Now includes parallel tech detection for improved accuracy
-async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis; techDetection?: TechDetectionResult }> {
+async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): Promise<{ content: string; model: string; structured?: StructuredAnalysis | EnhancedStructuredAnalysis; techDetection?: TechDetectionResult | null }> {
   const analysisKey = `${url}-${firstPartyData ? 'with-fp' : 'no-fp'}`;
   
   return manageConcurrentAnalysis(analysisKey, async () => {
@@ -418,22 +419,28 @@ async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): P
     const aiAnalysis = aiResult.value;
     
     // Handle tech detection result (graceful fallback)
+    const performanceMonitor = PerformanceMonitor.getInstance();
     let techDetection: TechDetectionResult | null = null;
+    
     if (techResult.status === 'fulfilled') {
       techDetection = techResult.value;
       if (techDetection) {
         console.log("Tech detection succeeded, will merge with AI analysis");
       } else {
         console.warn("Tech detection returned null, using AI-only analysis");
+        // Record fallback to AI-only analysis
+        performanceMonitor.recordDetection(totalTime, false, 0, true);
       }
     } else {
       console.warn("Tech detection failed:", techResult.reason);
+      // Record fallback to AI-only analysis
+      performanceMonitor.recordDetection(totalTime, false, 0, true);
     }
     
     // Return combined result
     return {
       ...aiAnalysis,
-      techDetection: techDetection || undefined
+      techDetection: techDetection
     };
   });
 }
@@ -443,6 +450,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // GET /api/healthz - Health check endpoint
   app.get("/api/healthz", healthzHandler);
+  
+  // GET /api/tech-detection/stats - Get tech detection performance statistics
+  app.get("/api/tech-detection/stats", async (req, res) => {
+    try {
+      const performanceMonitor = PerformanceMonitor.getInstance();
+      const stats = performanceMonitor.getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching tech detection stats:', error);
+      res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  });
   
   // GET /docs/SCORING_METHODOLOGY.md - Serve scoring methodology documentation
   app.get("/docs/SCORING_METHODOLOGY.md", async (req, res, next) => {
@@ -731,13 +750,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Now includes parallel tech detection
       const analysisResult = await analyzeUrlWithAI(url, firstPartyData || undefined);
 
-      // Merge AI analysis with tech detection results
+      // Merge AI analysis with tech detection results and set detection status flag
       let mergedStructured = analysisResult.structured;
+      let detectionStatus: 'success' | 'failed' | 'disabled' = 'disabled';
+      
       if (analysisResult.structured && analysisResult.techDetection) {
         console.log("Merging tech detection results with AI analysis...");
         mergedStructured = mergeAnalysisResults(analysisResult.structured, analysisResult.techDetection);
-      } else if (!analysisResult.techDetection) {
-        console.log("No tech detection results available, using AI-only analysis");
+        detectionStatus = 'success';
+      } else if (process.env.ENABLE_TECH_DETECTION !== 'false') {
+        // Tech detection was enabled but failed
+        console.warn("Tech detection was enabled but failed, using AI-only analysis");
+        detectionStatus = 'failed';
+        
+        // Add flag to structured data to indicate detection was attempted but failed
+        if (mergedStructured && mergedStructured.technical) {
+          mergedStructured = {
+            ...mergedStructured,
+            technical: {
+              ...mergedStructured.technical,
+              detectionAttempted: true,
+              detectionFailed: true,
+            }
+          };
+        }
+      } else {
+        console.log("Tech detection disabled via feature flag");
       }
 
       // Save analysis to storage with structured data and first-party data
@@ -757,6 +795,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const analysis = await minimalStorage.createAnalysis(req.userId, analysisInput);
+
+        // Log detection status for monitoring
+        console.log(`Analysis created with tech detection status: ${detectionStatus}`);
 
         res.json(analysis);
       } catch (storageError) {
