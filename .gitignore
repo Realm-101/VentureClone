@@ -1,7 +1,38 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+server/public/
+
+# Environment variables
 .env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.tar.gz
+vite.config.ts.*
+
+# Database
+*.db
+*.sqlite
+
+# Local development
+.local/

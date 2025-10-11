@@ -81,26 +81,52 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
+  // Defensive null checking - provide fallback if breakdown data is missing
+  if (!breakdown?.breakdown) {
+    return (
+      <Card className="bg-vc-dark border-vc-border">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-500">
+              <AlertCircle className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-vc-text">Complexity Breakdown</h3>
+              <p className="text-sm text-vc-text-muted">
+                Technical difficulty breakdown
+              </p>
+            </div>
+          </div>
+          <div className="bg-vc-card border border-vc-border rounded-lg p-4">
+            <p className="text-sm text-vc-text-muted text-center">
+              Complexity data is not available yet.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const sections = [
     {
       key: 'frontend',
       title: 'Frontend',
       icon: Code,
-      data: breakdown.breakdown.frontend,
+      data: breakdown.breakdown?.frontend,
       description: 'User interface and client-side complexity',
     },
     {
       key: 'backend',
       title: 'Backend',
       icon: Server,
-      data: breakdown.breakdown.backend,
+      data: breakdown.breakdown?.backend,
       description: 'Server-side logic and API complexity',
     },
     {
       key: 'infrastructure',
       title: 'Infrastructure',
       icon: Database,
-      data: breakdown.breakdown.infrastructure,
+      data: breakdown.breakdown?.infrastructure,
       description: 'Hosting, deployment, and DevOps complexity',
     },
   ];
@@ -114,7 +140,7 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
               <AlertCircle className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-vc-text">Complexity Analysis</h3>
+              <h3 className="text-lg font-semibold text-vc-text">Complexity Breakdown</h3>
               <p className="text-sm text-vc-text-muted">
                 Technical difficulty breakdown
               </p>
@@ -146,15 +172,15 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-vc-text">Overall Complexity</h4>
-            <Badge className={`${getOverallBadgeColor(breakdown.score)} border`}>
-              {getOverallLabel(breakdown.score)}
+            <Badge className={`${getOverallBadgeColor(breakdown?.score ?? 0)} border`}>
+              {getOverallLabel(breakdown?.score ?? 0)}
             </Badge>
           </div>
           
           <div className="bg-vc-card rounded-lg p-4 border border-vc-border">
             <div className="flex items-center justify-center mb-4">
-              <div className={`text-5xl font-bold ${getOverallColor(breakdown.score)}`}>
-                {breakdown.score}
+              <div className={`text-5xl font-bold ${getOverallColor(breakdown?.score ?? 0)}`}>
+                {breakdown?.score ?? 0}
               </div>
               <div className="text-2xl text-vc-text-muted ml-2">/10</div>
             </div>
@@ -162,11 +188,11 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
             <div className="w-full bg-vc-dark rounded-full h-3">
               <div
                 className={`h-3 rounded-full bg-gradient-to-r ${
-                  breakdown.score <= 3 ? 'from-green-500 to-emerald-500' :
-                  breakdown.score <= 6 ? 'from-yellow-500 to-orange-500' :
+                  (breakdown?.score ?? 0) <= 3 ? 'from-green-500 to-emerald-500' :
+                  (breakdown?.score ?? 0) <= 6 ? 'from-yellow-500 to-orange-500' :
                   'from-orange-500 to-red-500'
                 } transition-all`}
-                style={{ width: `${(breakdown.score / 10) * 100}%` }}
+                style={{ width: `${((breakdown?.score ?? 0) / 10) * 100}%` }}
               />
             </div>
           </div>
@@ -177,6 +203,9 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
           <h4 className="text-sm font-semibold text-vc-text">Component Breakdown</h4>
           
           {sections.map((section) => {
+            // Defensive null checking for section data
+            if (!section.data) return null;
+            
             const Icon = section.icon;
             const isExpanded = expandedSection === section.key;
             const percentage = (section.data.score / section.data.max) * 100;
@@ -218,13 +247,13 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
                   </div>
                 </div>
 
-                {isExpanded && section.data.technologies.length > 0 && (
+                {isExpanded && section.data.technologies?.length > 0 && (
                   <div className="px-4 pb-4 border-t border-vc-border pt-4">
                     <h6 className="text-xs font-semibold text-vc-text-muted mb-2">
                       Related Technologies
                     </h6>
                     <div className="flex flex-wrap gap-2">
-                      {section.data.technologies.map((tech, index) => (
+                      {section.data.technologies?.map((tech, index) => (
                         <Badge
                           key={index}
                           variant="outline"
@@ -242,62 +271,64 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
         </div>
 
         {/* Contributing Factors */}
-        <div className="space-y-3 mb-6">
-          <h4 className="text-sm font-semibold text-vc-text">Contributing Factors</h4>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-vc-card border border-vc-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-vc-text-muted">Custom Code</span>
-                <Badge className={breakdown.factors.customCode ? 
-                  'bg-orange-900/50 text-orange-300 border-orange-500/50 border' : 
-                  'bg-green-900/50 text-green-300 border-green-500/50 border'
-                }>
-                  {breakdown.factors.customCode ? 'Yes' : 'No'}
-                </Badge>
+        {breakdown.factors && (
+          <div className="space-y-3 mb-6">
+            <h4 className="text-sm font-semibold text-vc-text">Contributing Factors</h4>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-vc-card border border-vc-border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-vc-text-muted">Custom Code</span>
+                  <Badge className={breakdown.factors?.customCode ? 
+                    'bg-orange-900/50 text-orange-300 border-orange-500/50 border' : 
+                    'bg-green-900/50 text-green-300 border-green-500/50 border'
+                  }>
+                    {breakdown.factors?.customCode ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-vc-card border border-vc-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-vc-text-muted">Tech Count</span>
-                <Badge className="bg-blue-900/50 text-blue-300 border-blue-500/50 border">
-                  {breakdown.factors.technologyCount}
-                </Badge>
+              <div className="bg-vc-card border border-vc-border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-vc-text-muted">Tech Count</span>
+                  <Badge className="bg-blue-900/50 text-blue-300 border-blue-500/50 border">
+                    {breakdown.factors?.technologyCount ?? 0}
+                  </Badge>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-vc-card border border-vc-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-vc-text-muted">Framework</span>
-                <Badge className={`${getComplexityLevelLabel(breakdown.factors.frameworkComplexity).color} border`}>
-                  {getComplexityLevelLabel(breakdown.factors.frameworkComplexity).text}
-                </Badge>
+              <div className="bg-vc-card border border-vc-border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-vc-text-muted">Framework</span>
+                  <Badge className={`${getComplexityLevelLabel(breakdown.factors?.frameworkComplexity ?? 'low').color} border`}>
+                    {getComplexityLevelLabel(breakdown.factors?.frameworkComplexity ?? 'low').text}
+                  </Badge>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-vc-card border border-vc-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-vc-text-muted">Infrastructure</span>
-                <Badge className={`${getComplexityLevelLabel(breakdown.factors.infrastructureComplexity).color} border`}>
-                  {getComplexityLevelLabel(breakdown.factors.infrastructureComplexity).text}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          {breakdown.factors.licensingComplexity && (
-            <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-orange-300">
-                  <p className="font-semibold mb-1">Licensing Complexity Detected</p>
-                  <p>Some technologies may have commercial licenses or usage restrictions.</p>
+              <div className="bg-vc-card border border-vc-border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-vc-text-muted">Infrastructure</span>
+                  <Badge className={`${getComplexityLevelLabel(breakdown.factors?.infrastructureComplexity ?? 'low').color} border`}>
+                    {getComplexityLevelLabel(breakdown.factors?.infrastructureComplexity ?? 'low').text}
+                  </Badge>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {breakdown.factors?.licensingComplexity && (
+              <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-orange-300">
+                    <p className="font-semibold mb-1">Licensing Complexity Detected</p>
+                    <p>Some technologies may have commercial licenses or usage restrictions.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Explanation */}
         <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
@@ -306,7 +337,7 @@ export function ComplexityBreakdown({ breakdown }: ComplexityBreakdownProps) {
             <div>
               <h5 className="text-blue-300 font-semibold text-sm mb-2">Analysis Summary</h5>
               <p className="text-sm text-blue-200 leading-relaxed">
-                {breakdown.explanation}
+                {breakdown?.explanation ?? 'No detailed explanation available for this complexity analysis.'}
               </p>
             </div>
           </div>

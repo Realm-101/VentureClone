@@ -27,9 +27,15 @@ const formatMonths = (months: number): string => {
 };
 
 export function EstimatesCard({ estimates }: EstimatesCardProps) {
-  const avgDevTime = (estimates.developmentTime.min + estimates.developmentTime.max) / 2;
-  const avgOneTimeCost = (estimates.oneTimeCost.min + estimates.oneTimeCost.max) / 2;
-  const avgMonthlyCost = (estimates.monthlyCost.min + estimates.monthlyCost.max) / 2;
+  // Add null check before rendering component content
+  if (!estimates) {
+    return null;
+  }
+
+  // Add optional chaining for all nested property access
+  const avgDevTime = ((estimates.developmentTime?.min ?? 0) + (estimates.developmentTime?.max ?? 0)) / 2;
+  const avgOneTimeCost = ((estimates.oneTimeCost?.min ?? 0) + (estimates.oneTimeCost?.max ?? 0)) / 2;
+  const avgMonthlyCost = ((estimates.monthlyCost?.min ?? 0) + (estimates.monthlyCost?.max ?? 0)) / 2;
 
   return (
     <Card className="bg-vc-dark border-vc-border">
@@ -40,7 +46,7 @@ export function EstimatesCard({ estimates }: EstimatesCardProps) {
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-vc-text">Resource Estimates</h3>
+              <h3 className="text-lg font-semibold text-vc-text">Time & Cost Estimates</h3>
               <p className="text-sm text-vc-text-muted">
                 Time and cost projections
               </p>
@@ -80,14 +86,14 @@ export function EstimatesCard({ estimates }: EstimatesCardProps) {
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Minimum</div>
                   <div className="text-2xl font-bold text-blue-400">
-                    {formatMonths(estimates.developmentTime.min)}
+                    {formatMonths(estimates.developmentTime?.min ?? 0)}
                   </div>
                 </div>
                 <div className="text-vc-text-muted px-4">→</div>
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Maximum</div>
                   <div className="text-2xl font-bold text-blue-400">
-                    {formatMonths(estimates.developmentTime.max)}
+                    {formatMonths(estimates.developmentTime?.max ?? 0)}
                   </div>
                 </div>
               </div>
@@ -122,14 +128,14 @@ export function EstimatesCard({ estimates }: EstimatesCardProps) {
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Minimum</div>
                   <div className="text-2xl font-bold text-green-400">
-                    {formatCurrency(estimates.oneTimeCost.min)}
+                    {formatCurrency(estimates.oneTimeCost?.min ?? 0)}
                   </div>
                 </div>
                 <div className="text-vc-text-muted px-4">→</div>
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Maximum</div>
                   <div className="text-2xl font-bold text-green-400">
-                    {formatCurrency(estimates.oneTimeCost.max)}
+                    {formatCurrency(estimates.oneTimeCost?.max ?? 0)}
                   </div>
                 </div>
               </div>
@@ -168,7 +174,7 @@ export function EstimatesCard({ estimates }: EstimatesCardProps) {
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Minimum</div>
                   <div className="text-2xl font-bold text-purple-400">
-                    {formatCurrency(estimates.monthlyCost.min)}
+                    {formatCurrency(estimates.monthlyCost?.min ?? 0)}
                   </div>
                   <div className="text-xs text-vc-text-muted mt-1">/month</div>
                 </div>
@@ -176,7 +182,7 @@ export function EstimatesCard({ estimates }: EstimatesCardProps) {
                 <div className="text-center flex-1">
                   <div className="text-xs text-vc-text-muted mb-1">Maximum</div>
                   <div className="text-2xl font-bold text-purple-400">
-                    {formatCurrency(estimates.monthlyCost.max)}
+                    {formatCurrency(estimates.monthlyCost?.max ?? 0)}
                   </div>
                   <div className="text-xs text-vc-text-muted mt-1">/month</div>
                 </div>

@@ -130,7 +130,203 @@ describe('RecommendationsSection', () => {
     
     render(<RecommendationsSection recommendations={nonActionableRec} />);
     
-    expect(screen.getByText('Warning')).toBeInTheDocument();
+    // Use getAllByText since "Warning" appears as both type heading and title
+    const warningElements = screen.getAllByText('Warning');
+    expect(warningElements.length).toBeGreaterThan(0);
     expect(screen.queryByText('Actionable')).not.toBeInTheDocument();
+  });
+
+  // Null safety tests
+  it('handles undefined recommendations prop gracefully', () => {
+    render(<RecommendationsSection recommendations={undefined as any} />);
+    
+    // Should render empty state
+    expect(screen.getByText('Key Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('No recommendations available')).toBeInTheDocument();
+  });
+
+  it('handles null recommendations prop gracefully', () => {
+    render(<RecommendationsSection recommendations={null as any} />);
+    
+    // Should render empty state
+    expect(screen.getByText('Key Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('No recommendations available')).toBeInTheDocument();
+  });
+
+  it('handles recommendations with undefined properties gracefully', () => {
+    const partialRec: Recommendation[] = [
+      {
+        type: 'simplify',
+        title: 'Partial Recommendation',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={partialRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Partial Recommendation')).toBeInTheDocument();
+  });
+
+  it('handles recommendations with null description gracefully', () => {
+    const nullDescRec: Recommendation[] = [
+      {
+        type: 'alternative',
+        title: 'No Description',
+        description: null as any,
+        impact: 'medium',
+        actionable: true,
+      },
+    ];
+    
+    render(<RecommendationsSection recommendations={nullDescRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Description')).toBeInTheDocument();
+  });
+
+  it('handles recommendations with undefined impact gracefully', () => {
+    const noImpactRec: Recommendation[] = [
+      {
+        type: 'opportunity',
+        title: 'No Impact',
+        description: 'Test description',
+        actionable: true,
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={noImpactRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Impact')).toBeInTheDocument();
+  });
+
+  it('handles recommendations with undefined actionable gracefully', () => {
+    const noActionableRec: Recommendation[] = [
+      {
+        type: 'warning',
+        title: 'No Actionable',
+        description: 'Test description',
+        impact: 'high',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={noActionableRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Actionable')).toBeInTheDocument();
+  });
+
+  // Partial data tests
+  it('renders recommendations with minimal data', () => {
+    const minimalRecs: Recommendation[] = [
+      {
+        type: 'simplify',
+        title: 'Minimal Recommendation 1',
+      } as any,
+      {
+        type: 'alternative',
+        title: 'Minimal Recommendation 2',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={minimalRecs} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Minimal Recommendation 1')).toBeInTheDocument();
+    expect(screen.getByText('Minimal Recommendation 2')).toBeInTheDocument();
+  });
+
+  it('renders recommendations missing description', () => {
+    const noDesc: Recommendation[] = [
+      {
+        type: 'opportunity',
+        title: 'No Description',
+        impact: 'medium',
+        actionable: true,
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={noDesc} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Description')).toBeInTheDocument();
+    expect(screen.getByText('Medium Impact')).toBeInTheDocument();
+  });
+
+  it('renders recommendations missing impact', () => {
+    const noImpact: Recommendation[] = [
+      {
+        type: 'warning',
+        title: 'No Impact',
+        description: 'This is a warning without impact level',
+        actionable: false,
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={noImpact} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Impact')).toBeInTheDocument();
+    expect(screen.getByText(/This is a warning without impact level/)).toBeInTheDocument();
+  });
+
+  it('renders recommendations missing actionable flag', () => {
+    const noActionable: Recommendation[] = [
+      {
+        type: 'simplify',
+        title: 'No Actionable Flag',
+        description: 'Description here',
+        impact: 'high',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={noActionable} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Actionable Flag')).toBeInTheDocument();
+    expect(screen.getByText('High Impact')).toBeInTheDocument();
+  });
+
+  it('renders recommendations with only title and type', () => {
+    const titleOnly: Recommendation[] = [
+      {
+        type: 'alternative',
+        title: 'Title Only',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={titleOnly} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Title Only')).toBeInTheDocument();
+  });
+
+  it('renders mixed complete and partial recommendations', () => {
+    const mixedRecs: Recommendation[] = [
+      {
+        type: 'simplify',
+        title: 'Complete Recommendation',
+        description: 'Full description',
+        impact: 'high',
+        actionable: true,
+      },
+      {
+        type: 'warning',
+        title: 'Partial Recommendation',
+        description: 'Only description and title',
+      } as any,
+      {
+        type: 'opportunity',
+        title: 'Another Partial',
+        impact: 'low',
+      } as any,
+    ];
+    
+    render(<RecommendationsSection recommendations={mixedRecs} />);
+    
+    // Should render all recommendations without crashing
+    expect(screen.getByText('Complete Recommendation')).toBeInTheDocument();
+    expect(screen.getByText('Partial Recommendation')).toBeInTheDocument();
+    expect(screen.getByText('Another Partial')).toBeInTheDocument();
   });
 });

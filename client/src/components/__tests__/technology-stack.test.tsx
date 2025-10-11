@@ -327,4 +327,28 @@ describe('TechnologyStack Integration', () => {
     expect(screen.getByText('React Development')).toBeInTheDocument();
     expect(screen.getByText('Critical')).toBeInTheDocument();
   });
+
+  it('handles technology without categories gracefully', () => {
+    const detectedTechWithoutCategories = {
+      technologies: [
+        { name: 'React', categories: ['frontend'], confidence: 90 },
+        { name: 'Unknown Tool', confidence: 50 }, // Missing categories
+        { name: 'Node.js', categories: null as any, confidence: 85 }, // Null categories
+      ],
+      detectedAt: new Date().toISOString(),
+    };
+
+    // Should render without crashing
+    render(
+      <TechnologyStack
+        detectedTech={detectedTechWithoutCategories}
+      />
+    );
+
+    // Component should render successfully
+    expect(screen.getByText(/Technology Stack/i)).toBeInTheDocument();
+    
+    // Technologies with valid categories should still be grouped
+    expect(screen.getByText('Detailed Technology List')).toBeInTheDocument();
+  });
 });

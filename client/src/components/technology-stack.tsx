@@ -101,15 +101,15 @@ export function TechnologyStack({
   const [selectedTech, setSelectedTech] = useState<Technology | null>(null);
   const [isDetailedViewOpen, setIsDetailedViewOpen] = useState(false);
 
-  const groupedTechnologies = detectedTech?.technologies.reduce((acc: Record<string, Technology[]>, tech: Technology) => {
-    tech.categories.forEach((category: string) => {
+  const groupedTechnologies = detectedTech?.technologies?.reduce((acc: Record<string, Technology[]>, tech: Technology) => {
+    tech.categories?.forEach((category: string) => {
       if (!acc[category]) {
         acc[category] = [];
       }
       acc[category].push(tech);
     });
     return acc;
-  }, {} as Record<string, Technology[]>) || {};
+  }, {} as Record<string, Technology[]>) ?? {};
 
   return (
     <div className="space-y-6">

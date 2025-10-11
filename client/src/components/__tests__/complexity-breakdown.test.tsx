@@ -196,4 +196,163 @@ describe('ComplexityBreakdown', () => {
     
     expect(screen.getByText(/High Infrastructure Complexity/i)).toBeInTheDocument();
   });
+
+  // Null safety tests
+  it('handles undefined breakdown prop gracefully', () => {
+    // Component should not crash when breakdown is undefined
+    expect(() => render(<ComplexityBreakdown breakdown={undefined as any} />)).not.toThrow();
+  });
+
+  it('handles null breakdown prop gracefully', () => {
+    // Component should not crash when breakdown is null
+    expect(() => render(<ComplexityBreakdown breakdown={null as any} />)).not.toThrow();
+  });
+
+  it('handles undefined breakdown.breakdown gracefully', () => {
+    const partialBreakdown = {
+      score: 6,
+      factors: mockBreakdown.factors,
+      explanation: 'Test explanation',
+    } as any;
+    
+    render(<ComplexityBreakdown breakdown={partialBreakdown} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+  });
+
+  it('handles undefined breakdown.factors gracefully', () => {
+    const partialBreakdown = {
+      score: 6,
+      breakdown: mockBreakdown.breakdown,
+      explanation: 'Test explanation',
+    } as any;
+    
+    render(<ComplexityBreakdown breakdown={partialBreakdown} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+  });
+
+  it('handles undefined explanation gracefully', () => {
+    const noExplanation: EnhancedComplexityResult = {
+      score: 6,
+      breakdown: mockBreakdown.breakdown,
+      factors: mockBreakdown.factors,
+    } as any;
+    
+    render(<ComplexityBreakdown breakdown={noExplanation} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+  });
+
+  it('handles undefined technologies arrays gracefully', () => {
+    const noTechnologies: EnhancedComplexityResult = {
+      score: 6,
+      breakdown: {
+        frontend: { score: 2, max: 3 } as any,
+        backend: { score: 3, max: 4 } as any,
+        infrastructure: { score: 1, max: 3 } as any,
+      },
+      factors: mockBreakdown.factors,
+      explanation: 'Test explanation',
+    };
+    
+    render(<ComplexityBreakdown breakdown={noTechnologies} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+  });
+
+  // Partial data tests
+  it('renders with missing factors', () => {
+    const noFactors: EnhancedComplexityResult = {
+      score: 6,
+      breakdown: mockBreakdown.breakdown,
+      explanation: 'Test explanation',
+    } as any;
+    
+    render(<ComplexityBreakdown breakdown={noFactors} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('6/10')).toBeInTheDocument();
+    expect(screen.getByText('Frontend')).toBeInTheDocument();
+  });
+
+  it('renders with partial factors', () => {
+    const partialFactors: EnhancedComplexityResult = {
+      score: 6,
+      breakdown: mockBreakdown.breakdown,
+      factors: {
+        customCode: true,
+        frameworkComplexity: 'medium',
+      } as any,
+      explanation: 'Test explanation',
+    };
+    
+    render(<ComplexityBreakdown breakdown={partialFactors} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+    expect(screen.getByText(/Custom Code/i)).toBeInTheDocument();
+    expect(screen.getByText(/Medium Framework Complexity/i)).toBeInTheDocument();
+  });
+
+  it('renders with only frontend breakdown', () => {
+    const onlyFrontend: EnhancedComplexityResult = {
+      score: 2,
+      breakdown: {
+        frontend: { score: 2, max: 3, technologies: ['React'] },
+      } as any,
+      factors: mockBreakdown.factors,
+      explanation: 'Test explanation',
+    };
+    
+    render(<ComplexityBreakdown breakdown={onlyFrontend} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('Frontend')).toBeInTheDocument();
+  });
+
+  it('renders with missing explanation', () => {
+    const noExplanation: EnhancedComplexityResult = {
+      score: 6,
+      breakdown: mockBreakdown.breakdown,
+      factors: mockBreakdown.factors,
+    } as any;
+    
+    render(<ComplexityBreakdown breakdown={noExplanation} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('6/10')).toBeInTheDocument();
+  });
+
+  it('renders with empty technologies arrays', () => {
+    const emptyTech: EnhancedComplexityResult = {
+      score: 0,
+      breakdown: {
+        frontend: { score: 0, max: 3, technologies: [] },
+        backend: { score: 0, max: 4, technologies: [] },
+        infrastructure: { score: 0, max: 3, technologies: [] },
+      },
+      factors: {
+        customCode: false,
+        frameworkComplexity: 'low',
+        infrastructureComplexity: 'low',
+        technologyCount: 0,
+        licensingComplexity: false,
+      },
+      explanation: 'Minimal complexity',
+    };
+    
+    render(<ComplexityBreakdown breakdown={emptyTech} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Complexity Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('0/10')).toBeInTheDocument();
+  });
 });

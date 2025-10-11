@@ -138,4 +138,111 @@ describe('EstimatesCard', () => {
     expect(screen.getByText('$10,000 - $10,000')).toBeInTheDocument();
     expect(screen.getByText('$100 - $100/mo')).toBeInTheDocument();
   });
+
+  // Null safety tests
+  it('handles undefined estimates prop gracefully', () => {
+    // Component should not crash when estimates is undefined
+    expect(() => render(<EstimatesCard estimates={undefined as any} />)).not.toThrow();
+  });
+
+  it('handles null estimates prop gracefully', () => {
+    // Component should not crash when estimates is null
+    expect(() => render(<EstimatesCard estimates={null as any} />)).not.toThrow();
+  });
+
+  it('handles undefined developmentTime gracefully', () => {
+    const partialEstimates = {
+      oneTimeCost: { min: 5000, max: 15000 },
+      monthlyCost: { min: 50, max: 200 },
+    } as any;
+    
+    render(<EstimatesCard estimates={partialEstimates} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+  });
+
+  it('handles undefined oneTimeCost gracefully', () => {
+    const partialEstimates = {
+      developmentTime: { min: 3, max: 6 },
+      monthlyCost: { min: 50, max: 200 },
+    } as any;
+    
+    render(<EstimatesCard estimates={partialEstimates} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+  });
+
+  it('handles undefined monthlyCost gracefully', () => {
+    const partialEstimates = {
+      developmentTime: { min: 3, max: 6 },
+      oneTimeCost: { min: 5000, max: 15000 },
+    } as any;
+    
+    render(<EstimatesCard estimates={partialEstimates} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+  });
+
+  // Partial data tests
+  it('renders with only developmentTime', () => {
+    const onlyDevTime: TimeAndCostEstimates = {
+      developmentTime: { min: 3, max: 6 },
+    } as any;
+    
+    render(<EstimatesCard estimates={onlyDevTime} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+    expect(screen.getByText('Development Time')).toBeInTheDocument();
+    expect(screen.getByText('3 months')).toBeInTheDocument();
+    expect(screen.getByText('6 months')).toBeInTheDocument();
+  });
+
+  it('renders with only oneTimeCost', () => {
+    const onlyOneTime: TimeAndCostEstimates = {
+      oneTimeCost: { min: 5000, max: 15000 },
+    } as any;
+    
+    render(<EstimatesCard estimates={onlyOneTime} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+    expect(screen.getByText('One-Time Development Cost')).toBeInTheDocument();
+    expect(screen.getByText('5.0K')).toBeInTheDocument();
+    expect(screen.getByText('15.0K')).toBeInTheDocument();
+  });
+
+  it('renders with only monthlyCost', () => {
+    const onlyMonthly: TimeAndCostEstimates = {
+      monthlyCost: { min: 50, max: 200 },
+    } as any;
+    
+    render(<EstimatesCard estimates={onlyMonthly} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Time & Cost Estimates')).toBeInTheDocument();
+    expect(screen.getByText('Monthly Operating Cost')).toBeInTheDocument();
+    expect(screen.getByText('50')).toBeInTheDocument();
+    expect(screen.getByText('200')).toBeInTheDocument();
+  });
+
+  it('renders with developmentTime and oneTimeCost only', () => {
+    const twoFields: TimeAndCostEstimates = {
+      developmentTime: { min: 2, max: 4 },
+      oneTimeCost: { min: 3000, max: 8000 },
+    } as any;
+    
+    render(<EstimatesCard estimates={twoFields} />);
+    
+    // Should render both fields
+    expect(screen.getByText('Development Time')).toBeInTheDocument();
+    expect(screen.getByText('2 months')).toBeInTheDocument();
+    expect(screen.getByText('4 months')).toBeInTheDocument();
+    expect(screen.getByText('One-Time Development Cost')).toBeInTheDocument();
+    expect(screen.getByText('3.0K')).toBeInTheDocument();
+    expect(screen.getByText('8.0K')).toBeInTheDocument();
+  });
 });

@@ -75,8 +75,36 @@ const getImpactConfig = (impact: Recommendation['impact']) => {
 export function RecommendationsSection({ recommendations }: RecommendationsSectionProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
-  // Group recommendations by type
+  // Early return for empty or undefined recommendations
+  if (!recommendations || recommendations.length === 0) {
+    return (
+      <Card className="bg-vc-dark border-vc-border">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500">
+              <Lightbulb className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-vc-text">Key Recommendations</h3>
+              <p className="text-sm text-vc-text-muted">
+                No recommendations available
+              </p>
+            </div>
+          </div>
+          <div className="text-center py-8 text-vc-text-muted">
+            <p className="text-sm">
+              Recommendations will appear here after analysis is complete.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Group recommendations by type with null safety
   const groupedRecommendations = recommendations.reduce((acc, rec, index) => {
+    if (!rec?.type) return acc;
+    
     if (!acc[rec.type]) {
       acc[rec.type] = [];
     }
@@ -90,10 +118,6 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
   const toggleExpand = (index: number) => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
-
-  if (recommendations.length === 0) {
-    return null;
-  }
 
   return (
     <Card className="bg-vc-dark border-vc-border">
@@ -133,8 +157,10 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
                 </div>
 
                 <div className="space-y-2">
-                  {recs.map((rec) => {
-                    const impactConfig = getImpactConfig(rec.impact);
+                  {recs?.map((rec) => {
+                    if (!rec) return null;
+                    
+                    const impactConfig = getImpactConfig(rec.impact ?? 'low');
                     const isExpanded = expandedIndex === rec.originalIndex;
 
                     return (
@@ -150,7 +176,7 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
                                 <h5 className="text-sm font-medium text-vc-text">
-                                  {rec.title}
+                                  {rec.title ?? 'Untitled Recommendation'}
                                 </h5>
                                 {rec.actionable && (
                                   <TooltipProvider>
@@ -169,7 +195,7 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
                               </div>
                               {!isExpanded && (
                                 <p className="text-sm text-vc-text-muted line-clamp-2">
-                                  {rec.description}
+                                  {rec.description ?? 'No description available'}
                                 </p>
                               )}
                             </div>
@@ -194,7 +220,7 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
                                   Details
                                 </h6>
                                 <p className="text-sm text-vc-text leading-relaxed">
-                                  {rec.description}
+                                  {rec.description ?? 'No description available'}
                                 </p>
                               </div>
 
@@ -203,11 +229,11 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
                                 <div className="text-xs text-blue-300">
                                   <p className="font-semibold mb-1">Why this matters</p>
                                   <p>
-                                    {rec.impact === 'high' && 
+                                    {(rec.impact ?? 'low') === 'high' && 
                                       'This recommendation can significantly reduce development time and complexity.'}
-                                    {rec.impact === 'medium' && 
+                                    {(rec.impact ?? 'low') === 'medium' && 
                                       'This recommendation can moderately improve your cloning strategy.'}
-                                    {rec.impact === 'low' && 
+                                    {(rec.impact ?? 'low') === 'low' && 
                                       'This is a nice-to-have optimization that can provide incremental benefits.'}
                                   </p>
                                 </div>
@@ -228,10 +254,10 @@ export function RecommendationsSection({ recommendations }: RecommendationsSecti
         <div className="mt-6 pt-4 border-t border-vc-border">
           <div className="flex items-center justify-between text-xs">
             <span className="text-vc-text-muted">
-              {recommendations.filter(r => r.actionable).length} actionable recommendations
+              {recommendations?.filter(r => r?.actionable).length ?? 0} actionable recommendations
             </span>
             <span className="text-vc-text-muted">
-              {recommendations.filter(r => r.impact === 'high').length} high impact
+              {recommendations?.filter(r => r?.impact === 'high').length ?? 0} high impact
             </span>
           </div>
         </div>

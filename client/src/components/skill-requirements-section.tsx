@@ -122,6 +122,32 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
     setExpandedSkill(expandedSkill === skill ? null : skill);
   };
 
+  // Add null check for skills array
+  if (!skills || skills.length === 0) {
+    return (
+      <Card className="bg-vc-dark border-vc-border">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500">
+                <GraduationCap className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-vc-text">Skill Requirements</h3>
+                <p className="text-sm text-vc-text-muted">
+                  Technical expertise needed for cloning
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="text-center py-8">
+            <p className="text-vc-text-muted">No skill requirements available</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Group skills by category
   const groupedSkills = skills.reduce((acc, skill) => {
     if (!acc[skill.category]) {
@@ -137,10 +163,6 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
   // Sort categories by importance
   const categoryOrder: SkillRequirement['category'][] = ['frontend', 'backend', 'infrastructure', 'design'];
   const sortedCategories = categoryOrder.filter(cat => groupedSkills[cat]);
-
-  if (skills.length === 0) {
-    return null;
-  }
 
   return (
     <Card className="bg-vc-dark border-vc-border">
@@ -216,7 +238,7 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
                                   </TooltipProvider>
                                 )}
                               </div>
-                              {skill.relatedTechnologies.length > 0 && !isExpanded && (
+                              {skill.relatedTechnologies?.length > 0 && !isExpanded && (
                                 <div className="flex flex-wrap gap-1">
                                   {skill.relatedTechnologies.slice(0, 3).map((tech, i) => (
                                     <Badge
@@ -257,7 +279,7 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
                         {isExpanded && (
                           <div className="px-4 pb-4 border-t border-vc-border pt-4 space-y-4">
                             {/* Related Technologies */}
-                            {skill.relatedTechnologies.length > 0 && (
+                            {skill.relatedTechnologies?.length > 0 && (
                               <div>
                                 <h6 className="text-xs font-semibold text-vc-text-muted mb-2">
                                   Related Technologies
@@ -277,7 +299,7 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
                             )}
 
                             {/* Learning Resources */}
-                            {skill.learningResources.length > 0 && (
+                            {skill.learningResources?.length > 0 && (
                               <div>
                                 <h6 className="text-xs font-semibold text-vc-text-muted mb-2">
                                   Learning Resources
@@ -360,7 +382,7 @@ export function SkillRequirementsSection({ skills }: SkillRequirementsSectionPro
             <div className="bg-vc-card border border-vc-border rounded-lg p-3 text-center">
               <div className="text-xs text-vc-text-muted mb-1">Resources</div>
               <div className="text-lg font-bold text-blue-400">
-                {skills.reduce((sum, s) => sum + s.learningResources.length, 0)}
+                {skills.reduce((sum, s) => sum + (s.learningResources?.length ?? 0), 0)}
               </div>
             </div>
           </div>

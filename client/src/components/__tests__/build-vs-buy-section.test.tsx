@@ -220,4 +220,256 @@ describe('BuildVsBuySection', () => {
     expect(screen.getByText('Transaction fees')).toBeInTheDocument();
     expect(screen.getByText('Complex for advanced use cases')).toBeInTheDocument();
   });
+
+  // Null safety tests
+  it('handles undefined recommendations prop gracefully', () => {
+    // Component should not crash when recommendations is undefined
+    expect(() => render(<BuildVsBuySection recommendations={undefined as any} />)).not.toThrow();
+  });
+
+  it('handles null recommendations prop gracefully', () => {
+    // Component should not crash when recommendations is null
+    expect(() => render(<BuildVsBuySection recommendations={null as any} />)).not.toThrow();
+  });
+
+  it('handles recommendations with undefined saasAlternative gracefully', () => {
+    const noSaasRec: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Custom Feature',
+        recommendation: 'buy',
+        reasoning: 'Should use a service',
+        estimatedSavings: {
+          time: 40,
+          cost: 2000,
+        },
+      } as any,
+    ];
+    
+    render(<BuildVsBuySection recommendations={noSaasRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Custom Feature')).toBeInTheDocument();
+  });
+
+  it('handles recommendations with undefined estimatedSavings gracefully', () => {
+    const noSavingsRec: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Test Tech',
+        recommendation: 'build',
+        reasoning: 'Custom is better',
+      } as any,
+    ];
+    
+    render(<BuildVsBuySection recommendations={noSavingsRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Test Tech')).toBeInTheDocument();
+  });
+
+  it('handles saasAlternative with undefined nested properties gracefully', () => {
+    const partialSaasRec: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Partial SaaS',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service Name',
+          description: 'Service description',
+        } as any,
+        estimatedSavings: {
+          time: 50,
+          cost: 2500,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={partialSaasRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Partial SaaS')).toBeInTheDocument();
+    expect(screen.getByText('Service Name')).toBeInTheDocument();
+  });
+
+  it('handles saasAlternative with undefined tradeoffs gracefully', () => {
+    const noTradeoffsRec: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'No Tradeoffs',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service',
+          description: 'Description',
+          pricing: '$10/mo',
+          timeSavings: 30,
+          recommendedFor: 'mvp',
+        } as any,
+        estimatedSavings: {
+          time: 30,
+          cost: 1500,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={noTradeoffsRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Tradeoffs')).toBeInTheDocument();
+  });
+
+  // Partial data tests
+  it('renders recommendations missing saasAlternative', () => {
+    const noSaas: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Custom Feature',
+        recommendation: 'build',
+        reasoning: 'This requires custom implementation',
+        estimatedSavings: {
+          time: 0,
+          cost: 0,
+        },
+      } as any,
+      {
+        technology: 'Another Feature',
+        recommendation: 'buy',
+        reasoning: 'Should use a service',
+        estimatedSavings: {
+          time: 40,
+          cost: 2000,
+        },
+      } as any,
+    ];
+    
+    render(<BuildVsBuySection recommendations={noSaas} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Custom Feature')).toBeInTheDocument();
+    expect(screen.getByText('Another Feature')).toBeInTheDocument();
+    expect(screen.getByText(/This requires custom implementation/)).toBeInTheDocument();
+  });
+
+  it('renders saasAlternative with minimal data', () => {
+    const minimalSaas: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Minimal SaaS',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service Name',
+        } as any,
+        estimatedSavings: {
+          time: 50,
+          cost: 2500,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={minimalSaas} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Minimal SaaS')).toBeInTheDocument();
+    expect(screen.getByText('Service Name')).toBeInTheDocument();
+  });
+
+  it('renders saasAlternative missing pricing', () => {
+    const noPricing: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'No Pricing',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service',
+          description: 'Service description',
+          timeSavings: 60,
+          recommendedFor: 'mvp',
+        } as any,
+        estimatedSavings: {
+          time: 60,
+          cost: 3000,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={noPricing} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Pricing')).toBeInTheDocument();
+    expect(screen.getByText('Service')).toBeInTheDocument();
+  });
+
+  it('renders saasAlternative with empty tradeoffs', () => {
+    const emptyTradeoffs: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Empty Tradeoffs',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service',
+          description: 'Description',
+          pricing: '$20/mo',
+          timeSavings: 40,
+          tradeoffs: {
+            pros: [],
+            cons: [],
+          },
+          recommendedFor: 'both',
+        },
+        estimatedSavings: {
+          time: 40,
+          cost: 2000,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={emptyTradeoffs} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Empty Tradeoffs')).toBeInTheDocument();
+    expect(screen.getByText('Service')).toBeInTheDocument();
+  });
+
+  it('renders recommendations missing estimatedSavings', () => {
+    const noSavings: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'No Savings',
+        recommendation: 'build',
+        reasoning: 'Custom is better',
+      } as any,
+    ];
+    
+    render(<BuildVsBuySection recommendations={noSavings} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('No Savings')).toBeInTheDocument();
+    expect(screen.getByText(/Custom is better/)).toBeInTheDocument();
+  });
+
+  it('renders saasAlternative with partial tradeoffs', () => {
+    const partialTradeoffs: BuildVsBuyRecommendation[] = [
+      {
+        technology: 'Partial Tradeoffs',
+        recommendation: 'buy',
+        reasoning: 'Use a service',
+        saasAlternative: {
+          name: 'Service',
+          description: 'Description',
+          pricing: '$15/mo',
+          timeSavings: 35,
+          tradeoffs: {
+            pros: ['Fast setup', 'Reliable'],
+          } as any,
+          recommendedFor: 'mvp',
+        },
+        estimatedSavings: {
+          time: 35,
+          cost: 1750,
+        },
+      },
+    ];
+    
+    render(<BuildVsBuySection recommendations={partialTradeoffs} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Partial Tradeoffs')).toBeInTheDocument();
+    expect(screen.getByText('Service')).toBeInTheDocument();
+  });
 });

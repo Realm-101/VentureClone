@@ -91,7 +91,8 @@ const formatCurrency = (amount: number): string => {
 };
 
 export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
-  if (recommendations.length === 0) {
+  // Defensive null check for recommendations array
+  if (!recommendations || recommendations.length === 0) {
     return null;
   }
 
@@ -143,16 +144,16 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
                   </div>
 
                   {/* Estimated Savings */}
-                  {rec.recommendation === 'buy' && (
+                  {rec.recommendation === 'buy' && rec.estimatedSavings && (
                     <div className="flex items-center gap-4 mt-3">
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="h-4 w-4 text-green-400" />
                         <span className="text-vc-text-muted">Save:</span>
                         <span className="text-green-400 font-medium">
-                          {formatHours(rec.estimatedSavings.time)}
+                          {formatHours(rec.estimatedSavings.time ?? 0)}
                         </span>
                       </div>
-                      {rec.estimatedSavings.cost > 0 && (
+                      {(rec.estimatedSavings.cost ?? 0) > 0 && (
                         <div className="flex items-center gap-2 text-sm">
                           <DollarSign className="h-4 w-4 text-green-400" />
                           <span className="text-vc-text-muted">Save:</span>
@@ -186,17 +187,17 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
                           )}
                         </div>
                         <p className="text-sm text-vc-text-muted mb-2">
-                          {rec.saasAlternative.description}
+                          {rec.saasAlternative.description ?? 'No description available'}
                         </p>
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-vc-text-muted" />
                           <span className="text-sm text-vc-text">
-                            {rec.saasAlternative.pricing}
+                            {rec.saasAlternative.pricing ?? 'Pricing not available'}
                           </span>
                         </div>
                       </div>
-                      <Badge className={`${getRecommendedForBadge(rec.saasAlternative.recommendedFor).color} border`}>
-                        {getRecommendedForBadge(rec.saasAlternative.recommendedFor).label}
+                      <Badge className={`${getRecommendedForBadge(rec.saasAlternative.recommendedFor ?? 'both').color} border`}>
+                        {getRecommendedForBadge(rec.saasAlternative.recommendedFor ?? 'both').label}
                       </Badge>
                     </div>
 
@@ -209,12 +210,12 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
                           <h6 className="text-xs font-semibold text-green-300">Pros</h6>
                         </div>
                         <ul className="space-y-1">
-                          {rec.saasAlternative.tradeoffs.pros.map((pro, i) => (
+                          {rec.saasAlternative.tradeoffs?.pros?.map((pro, i) => (
                             <li key={i} className="text-xs text-green-200 flex items-start gap-2">
                               <span className="text-green-400 mt-0.5">•</span>
                               <span>{pro}</span>
                             </li>
-                          ))}
+                          )) ?? <li className="text-xs text-green-200">No pros listed</li>}
                         </ul>
                       </div>
 
@@ -225,18 +226,18 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
                           <h6 className="text-xs font-semibold text-red-300">Cons</h6>
                         </div>
                         <ul className="space-y-1">
-                          {rec.saasAlternative.tradeoffs.cons.map((con, i) => (
+                          {rec.saasAlternative.tradeoffs?.cons?.map((con, i) => (
                             <li key={i} className="text-xs text-red-200 flex items-start gap-2">
                               <span className="text-red-400 mt-0.5">•</span>
                               <span>{con}</span>
                             </li>
-                          ))}
+                          )) ?? <li className="text-xs text-red-200">No cons listed</li>}
                         </ul>
                       </div>
                     </div>
 
                     {/* Time Savings Highlight */}
-                    {rec.saasAlternative.timeSavings > 0 && (
+                    {(rec.saasAlternative.timeSavings ?? 0) > 0 && (
                       <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
                         <div className="flex items-start gap-2">
                           <Clock className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
@@ -244,7 +245,7 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
                             <p className="font-semibold mb-1">Time Savings</p>
                             <p>
                               Using {rec.saasAlternative.name} can save approximately{' '}
-                              <span className="font-bold">{formatHours(rec.saasAlternative.timeSavings)}</span>{' '}
+                              <span className="font-bold">{formatHours(rec.saasAlternative.timeSavings ?? 0)}</span>{' '}
                               of development time compared to building a custom solution.
                             </p>
                           </div>
@@ -281,7 +282,7 @@ export function BuildVsBuySection({ recommendations }: BuildVsBuySectionProps) {
           <div className="bg-vc-card border border-vc-border rounded-lg p-3 text-center">
             <div className="text-xs text-vc-text-muted mb-1">Total Time Saved</div>
             <div className="text-lg font-bold text-green-400">
-              {formatHours(recommendations.reduce((sum, rec) => sum + rec.estimatedSavings.time, 0))}
+              {formatHours(recommendations.reduce((sum, rec) => sum + (rec.estimatedSavings?.time ?? 0), 0))}
             </div>
           </div>
           <div className="bg-vc-card border border-vc-border rounded-lg p-3 text-center">

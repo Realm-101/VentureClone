@@ -124,4 +124,209 @@ describe('ClonabilityScoreCard', () => {
     expect(screen.getByText(/20%/)).toBeInTheDocument();
     expect(screen.getByText(/10%/)).toBeInTheDocument();
   });
+
+  // Null safety tests
+  it('handles undefined score prop gracefully', () => {
+    // Component should not crash when score is undefined
+    expect(() => render(<ClonabilityScoreCard score={undefined as any} />)).not.toThrow();
+  });
+
+  it('handles null score prop gracefully', () => {
+    // Component should not crash when score is null
+    expect(() => render(<ClonabilityScoreCard score={null as any} />)).not.toThrow();
+  });
+
+  it('handles undefined components gracefully', () => {
+    const noComponents: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      recommendation: 'Test recommendation',
+      confidence: 0.85,
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noComponents} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+  });
+
+  it('handles undefined recommendation gracefully', () => {
+    const noRecommendation: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: mockScore.components,
+      confidence: 0.85,
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noRecommendation} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+  });
+
+  it('handles undefined confidence gracefully', () => {
+    const noConfidence: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: mockScore.components,
+      recommendation: 'Test recommendation',
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noConfidence} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+  });
+
+  it('handles partial components gracefully', () => {
+    const partialComponents: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: {
+        technicalComplexity: { score: 6, weight: 0.4 },
+      } as any,
+      recommendation: 'Test recommendation',
+      confidence: 0.85,
+    };
+    
+    render(<ClonabilityScoreCard score={partialComponents} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+  });
+
+  it('handles components with undefined nested properties gracefully', () => {
+    const incompleteComponents: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: {
+        technicalComplexity: { score: 6, weight: 0.4 },
+        marketOpportunity: { score: 0, weight: 0.3 } as any, // score is 0 instead of undefined
+      } as any,
+      recommendation: 'Test recommendation',
+      confidence: 0.85,
+    };
+    
+    // Component should not crash with incomplete nested properties
+    expect(() => render(<ClonabilityScoreCard score={incompleteComponents} />)).not.toThrow();
+  });
+
+  // Partial data tests
+  it('renders with missing components', () => {
+    const noComponents: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      recommendation: 'Good opportunity for cloning',
+      confidence: 0.85,
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noComponents} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('7/10')).toBeInTheDocument();
+    expect(screen.getByText('Easy')).toBeInTheDocument();
+  });
+
+  it('renders with partial components (only technicalComplexity)', () => {
+    const partialComponents: ClonabilityScore = {
+      score: 6,
+      rating: 'easy',
+      components: {
+        technicalComplexity: { score: 6, weight: 0.4 },
+      } as any,
+      recommendation: 'Test recommendation',
+      confidence: 0.80,
+    };
+    
+    render(<ClonabilityScoreCard score={partialComponents} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('6/10')).toBeInTheDocument();
+    expect(screen.getByText('Technical Complexity')).toBeInTheDocument();
+  });
+
+  it('renders with partial components (two components)', () => {
+    const twoComponents: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: {
+        technicalComplexity: { score: 6, weight: 0.5 },
+        marketOpportunity: { score: 8, weight: 0.5 },
+      } as any,
+      recommendation: 'Test recommendation',
+      confidence: 0.75,
+    };
+    
+    render(<ClonabilityScoreCard score={twoComponents} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('Technical Complexity')).toBeInTheDocument();
+    expect(screen.getByText('Market Opportunity')).toBeInTheDocument();
+  });
+
+  it('renders with missing recommendation', () => {
+    const noRec: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: mockScore.components,
+      confidence: 0.85,
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noRec} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('7/10')).toBeInTheDocument();
+  });
+
+  it('renders with missing confidence', () => {
+    const noConfidence: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: mockScore.components,
+      recommendation: 'Test recommendation',
+    } as any;
+    
+    render(<ClonabilityScoreCard score={noConfidence} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('7/10')).toBeInTheDocument();
+  });
+
+  it('renders with minimal data (only score and rating)', () => {
+    const minimal: ClonabilityScore = {
+      score: 5,
+      rating: 'moderate',
+    } as any;
+    
+    render(<ClonabilityScoreCard score={minimal} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('5/10')).toBeInTheDocument();
+    expect(screen.getByText('Moderate')).toBeInTheDocument();
+  });
+
+  it('renders with components missing weights', () => {
+    const noWeights: ClonabilityScore = {
+      score: 7,
+      rating: 'easy',
+      components: {
+        technicalComplexity: { score: 6 } as any,
+        marketOpportunity: { score: 8 } as any,
+      } as any,
+      recommendation: 'Test recommendation',
+      confidence: 0.85,
+    };
+    
+    render(<ClonabilityScoreCard score={noWeights} />);
+    
+    // Should render without crashing
+    expect(screen.getByText('Clonability Score')).toBeInTheDocument();
+    expect(screen.getByText('Technical Complexity')).toBeInTheDocument();
+  });
 });
