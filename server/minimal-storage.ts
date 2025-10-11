@@ -8,7 +8,10 @@ import {
   type Stage3Content,
   type Stage4Content,
   type Stage5Content,
-  type Stage6Content
+  type Stage6Content,
+  type TechnologyInsights,
+  type ClonabilityScore,
+  type EnhancedComplexityResult
 } from "@shared/schema";
 
 // Stage data interface with proper typing
@@ -42,6 +45,11 @@ export interface AnalysisRecord {
   structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
   firstPartyData?: FirstPartyData;
   improvements?: BusinessImprovement;
+  // Technology insights fields
+  technologyInsights?: TechnologyInsights;
+  clonabilityScore?: ClonabilityScore;
+  enhancedComplexity?: EnhancedComplexityResult;
+  insightsGeneratedAt?: Date;
   // Workflow stage data with proper typing
   stages?: StagesRecord;
   currentStage?: number;
@@ -62,6 +70,11 @@ export interface CreateAnalysisInput {
   structured?: StructuredAnalysis | EnhancedStructuredAnalysis;
   firstPartyData?: FirstPartyData;
   improvements?: BusinessImprovement;
+  // Technology insights fields
+  technologyInsights?: TechnologyInsights;
+  clonabilityScore?: ClonabilityScore;
+  enhancedComplexity?: EnhancedComplexityResult;
+  insightsGeneratedAt?: Date;
 }
 
 // Storage interface defining the contract for all storage implementations
@@ -159,6 +172,10 @@ export class MemStorage implements IStorage {
     if (record.structured) analysis.structured = record.structured;
     if (record.firstPartyData) analysis.firstPartyData = record.firstPartyData;
     if (record.improvements) analysis.improvements = record.improvements;
+    if (record.technologyInsights) analysis.technologyInsights = record.technologyInsights;
+    if (record.clonabilityScore) analysis.clonabilityScore = record.clonabilityScore;
+    if (record.enhancedComplexity) analysis.enhancedComplexity = record.enhancedComplexity;
+    if (record.insightsGeneratedAt) analysis.insightsGeneratedAt = record.insightsGeneratedAt;
     if (overallScore) analysis.overallScore = overallScore;
     if (businessModel) analysis.businessModel = businessModel;
     if (revenueStream) analysis.revenueStream = revenueStream;

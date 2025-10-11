@@ -8,6 +8,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { userMiddleware } from "./middleware/user";
 import { requestIdMiddleware } from "./middleware/requestId";
 import { errorHandler } from "./middleware/errorHandler";
+import { technologyKnowledgeBase } from "./services/technology-knowledge-base.js";
+import { performanceMonitor } from "./services/performance-monitor.js";
 
 const app = express();
 
@@ -53,6 +55,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize services on server start
+  log('Initializing technology knowledge base...');
+  const kbStartTime = Date.now();
+  technologyKnowledgeBase.loadData();
+  const kbDuration = Date.now() - kbStartTime;
+  log(`✓ Knowledge base loaded in ${kbDuration}ms`);
+  
+  // Start performance monitoring
+  performanceMonitor.startMonitoring();
+  
   // 4. Register API routes (includes rate limiting on specific endpoints) - requirement 5.2
   const server = await registerRoutes(app);
 

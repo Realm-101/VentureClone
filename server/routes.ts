@@ -13,6 +13,9 @@ import { ExportService } from "./services/export-service";
 import { TechDetectionService, type TechDetectionResult } from "./services/tech-detection.js";
 import { ComplexityCalculator } from "./services/complexity-calculator.js";
 import { PerformanceMonitor } from "./services/performance-monitor.js";
+import { technologyInsightsService, type TechnologyInsights } from "./services/technology-insights.js";
+import { clonabilityScoreService, type ClonabilityScore } from "./services/clonability-score.js";
+import type { EnhancedComplexityResult } from "./services/complexity-calculator.js";
 
 // URL validation helper
 function isValidUrl(string: string): boolean {
@@ -778,7 +781,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Tech detection disabled via feature flag");
       }
 
-      // Save analysis to storage with structured data and first-party data
+      // Generate technology insights if tech detection was successful
+      let technologyInsights: TechnologyInsights | undefined;
+      let clonabilityScore: ClonabilityScore | undefined;
+      let enhancedComplexity: EnhancedComplexityResult | undefined;
+      let insightsGeneratedAt: Date | undefined;
+
+      if (detectionStatus === 'success' && analysisResult.techDetection && mergedStructured?.technical?.actualDetected) {
+        try {
+          console.log("Generating technology insights...");
+          const insightsStartTime = Date.now();
+          
+          // Calculate enhanced complexity with breakdown
+          const complexityCalculator = new ComplexityCalculator();
+          enhancedComplexity = complexityCalculator.calculateEnhancedComplexity(
+            analysisResult.techDetection.technologies
+          );
+          
+          // Generate technology insights (includes retry logic and fallback)
+          technologyInsights = technologyInsightsService.generateInsights(
+            analysisResult.techDetection.technologies,
+            enhancedComplexity.score
+          );
+          
+          // Calculate clonability score
+          clonabilityScore = clonabilityScoreService.calculateClonability(
+            enhancedComplexity.score,
+            mergedStructured as any, // Cast to EnhancedStructuredAnalysis
+            technologyInsights.estimates
+          );
+          
+          insightsGeneratedAt = new Date();
+          
+          const insightsTime = Date.now() - insightsStartTime;
+          console.log(JSON.stringify({
+            service: 'analysis-flow',
+            action: 'insights-generated',
+            status: 'success',
+            duration: insightsTime,
+            complexityScore: enhancedComplexity.score,
+            clonabilityScore: clonabilityScore.score,
+            recommendationsCount: technologyInsights.recommendations.length,
+            timestamp: new Date().toISOString(),
+          }));
+        } catch (insightsError) {
+          // Graceful degradation: log error but continue with analysis
+          const errorMessage = insightsError instanceof Error ? insightsError.message : String(insightsError);
+          const errorStack = insightsError instanceof Error ? insightsError.stack : undefined;
+          
+          console.error(JSON.stringify({
+            service: 'analysis-flow',
+            action: 'insights-generation-failed',
+            status: 'error',
+            error: errorMessage,
+            stack: errorStack,
+            timestamp: new Date().toISOString(),
+          }));
+          
+          console.warn("Continuing with analysis without insights");
+          
+          // Reset insights to undefined to ensure we don't save partial data
+          technologyInsights = undefined;
+          clonabilityScore = undefined;
+          enhancedComplexity = undefined;
+          insightsGeneratedAt = undefined;
+        }
+      } else {
+        console.log(JSON.stringify({
+          service: 'analysis-flow',
+          action: 'insights-skipped',
+          reason: detectionStatus !== 'success' ? 'detection-failed' : 'no-tech-detected',
+          timestamp: new Date().toISOString(),
+        }));
+      }
+
+      // Save analysis to storage with structured data, first-party data, and insights
       try {
         const analysisInput: CreateAnalysisInput = {
           url,
@@ -794,10 +871,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           analysisInput.firstPartyData = firstPartyData;
         }
         
+        // Add technology insights if generated
+        if (technologyInsights) {
+          analysisInput.technologyInsights = technologyInsights;
+        }
+        
+        if (clonabilityScore) {
+          analysisInput.clonabilityScore = clonabilityScore;
+        }
+        
+        if (enhancedComplexity) {
+          analysisInput.enhancedComplexity = enhancedComplexity;
+        }
+        
+        if (insightsGeneratedAt) {
+          analysisInput.insightsGeneratedAt = insightsGeneratedAt;
+        }
+        
         const analysis = await minimalStorage.createAnalysis(req.userId, analysisInput);
 
-        // Log detection status for monitoring
-        console.log(`Analysis created with tech detection status: ${detectionStatus}`);
+        // Log detection status and insights for monitoring
+        console.log(`Analysis created with tech detection status: ${detectionStatus}`, {
+          hasInsights: !!technologyInsights,
+          hasClonabilityScore: !!clonabilityScore,
+          hasEnhancedComplexity: !!enhancedComplexity,
+        });
 
         res.json(analysis);
       } catch (storageError) {

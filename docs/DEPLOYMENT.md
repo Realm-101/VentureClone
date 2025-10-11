@@ -58,17 +58,48 @@ npm run db:migrate
 npm start
 ```
 
-## Technology Detection Feature
+## Technology Detection & Insights Feature
 
 ### Overview
 
-The technology detection feature uses Wappalyzer to accurately identify technologies used by analyzed websites. This feature:
+The technology detection and insights feature transforms raw tech stack data into actionable business intelligence. This comprehensive system:
 
+**Technology Detection:**
+- Uses Wappalyzer to accurately identify technologies used by analyzed websites
 - Runs in parallel with AI analysis for minimal performance impact
 - Provides accurate tech stack detection with confidence scores
-- Calculates complexity scores (1-10 scale) based on detected technologies
-- Enhances AI recommendations in Stage 3 (MVP Planning) and Stage 6 (AI Automation)
 - Falls back gracefully to AI-only analysis if detection fails
+
+**Technology Insights Engine:**
+- Generates actionable recommendations and alternatives for detected technologies
+- Provides build-vs-buy analysis with SaaS alternatives and cost comparisons
+- Maps skill requirements with proficiency levels and learning resources
+- Calculates realistic time and cost estimates based on tech stack complexity
+- Combines technical, market, and resource factors into a comprehensive clonability score (1-10)
+
+**Enhanced Complexity Analysis:**
+- Breaks down complexity by frontend (0-3), backend (0-4), and infrastructure (0-3)
+- Uses weighted scoring by category importance
+- Considers technology count, licensing complexity, and maturity
+- Provides detailed explanations for complexity scores
+
+**Technology Knowledge Base:**
+- Contains 50+ technology profiles with alternatives, costs, and learning resources
+- Loaded into memory on server start for fast O(1) lookups
+- Easily extensible by adding entries to JSON file
+- Provides fallback recommendations for unknown technologies
+
+**Performance Optimization:**
+- Insights generation completes in <500ms (excluding tech detection)
+- 24-hour caching for repeated analyses
+- In-memory knowledge base for fast lookups
+- Parallel processing where possible
+
+**Integration Points:**
+- Enhances AI recommendations in Stage 3 (MVP Planning) with detected tech and alternatives
+- Informs Stage 6 (AI Automation) with automation opportunities based on tech stack
+- Provides comprehensive technology analysis in analysis results
+- Exports insights in PDF, HTML, and JSON formats
 
 ### Feature Flag Control
 
@@ -164,15 +195,27 @@ ENABLE_TECH_DETECTION=false
    - Target: <10 seconds
    - Alert threshold: >15 seconds
 
-3. **Fallback Rate**
+3. **Insights Generation Time**
+   - Target: <500ms
+   - Alert threshold: >1000ms
+
+4. **Knowledge Base Coverage**
+   - Target: >70% of detected technologies have profiles
+   - Alert threshold: <50%
+
+5. **Cache Hit Rate**
+   - Target: >80%
+   - Alert threshold: <60%
+
+6. **Fallback Rate**
    - Target: <20%
    - Alert threshold: >30%
 
-4. **Total Analysis Time**
+7. **Total Analysis Time**
    - Target: <10% increase vs AI-only
    - Alert threshold: >15% increase
 
-5. **Error Rate**
+8. **Error Rate**
    - Target: <5%
    - Alert threshold: >10%
 
@@ -387,7 +430,159 @@ For deployment issues:
 3. Consult the troubleshooting section
 4. Create an issue in the repository
 
+## Technology Knowledge Base Management
+
+### Structure
+
+The technology knowledge base is stored in `server/data/technology-knowledge-base.json` and contains profiles for 50+ technologies. Each profile includes:
+
+```json
+{
+  "name": "React",
+  "category": "frontend-framework",
+  "difficulty": "intermediate",
+  "alternatives": [
+    {
+      "name": "Vue.js",
+      "reason": "Easier learning curve, good for solo developers",
+      "difficulty": "beginner",
+      "timeSavings": 40,
+      "complexityReduction": 2
+    }
+  ],
+  "estimatedCost": {
+    "development": { "min": 80, "max": 160 },
+    "monthly": { "min": 0, "max": 0 }
+  },
+  "saasAlternatives": [],
+  "learningResources": [
+    {
+      "title": "React Official Tutorial",
+      "url": "https://react.dev/learn",
+      "type": "documentation",
+      "difficulty": "beginner"
+    }
+  ],
+  "popularity": 10,
+  "maturity": "mature",
+  "licensing": "open-source"
+}
+```
+
+### Adding New Technologies
+
+To add a new technology to the knowledge base:
+
+1. **Edit the JSON file**: Open `server/data/technology-knowledge-base.json`
+
+2. **Add a new entry** following the structure above:
+   - `name`: Technology name (must match Wappalyzer detection name)
+   - `category`: One of: frontend-framework, backend-framework, database, hosting, authentication, payment, cms, analytics, cdn, other
+   - `difficulty`: beginner, intermediate, or advanced
+   - `alternatives`: Array of simpler alternatives with time savings
+   - `estimatedCost`: Development hours (min/max) and monthly cost (min/max)
+   - `saasAlternatives`: Array of SaaS alternatives (for custom solutions)
+   - `learningResources`: Array of learning resources with URLs
+   - `popularity`: 1-10 scale
+   - `maturity`: experimental, stable, mature, or legacy
+   - `licensing`: open-source, commercial, or freemium
+
+3. **Restart the server**: The knowledge base is loaded on server start
+
+4. **Verify**: Check that the new technology appears in insights for analyses that detect it
+
+### Best Practices
+
+- **Keep alternatives relevant**: Only suggest alternatives that are genuinely simpler or more suitable for MVPs
+- **Accurate time savings**: Base time savings on realistic development hour estimates
+- **Quality learning resources**: Link to official documentation, high-quality tutorials, or courses
+- **Update regularly**: Review and update profiles as technologies evolve
+- **Test thoroughly**: Verify that new entries work correctly in the insights generation flow
+
+### Fallback Behavior
+
+If a detected technology is not in the knowledge base:
+- The system provides generic recommendations based on category
+- Logs the missing technology for future addition
+- Continues with available data without errors
+
+## Migration Guide for Existing Analyses
+
+### Database Schema Changes
+
+The tech insights feature adds new fields to the `businessAnalyses` table:
+
+```sql
+ALTER TABLE business_analyses 
+ADD COLUMN technology_insights JSONB,
+ADD COLUMN clonability_score JSONB,
+ADD COLUMN enhanced_complexity JSONB,
+ADD COLUMN insights_generated_at TIMESTAMP;
+```
+
+### Migrating Existing Data
+
+Existing analyses will not have insights data. To regenerate insights:
+
+**Option 1: Automatic Regeneration (Recommended)**
+- Insights are generated on-demand when viewing an analysis
+- No manual intervention required
+- Cached for 24 hours after generation
+
+**Option 2: Batch Regeneration**
+- Create a script to re-analyze existing URLs
+- Useful for ensuring all analyses have insights
+- Can be run during off-peak hours
+
+```typescript
+// Example batch regeneration script
+import { db } from './server/minimal-storage';
+import { TechnologyInsightsService } from './server/services/technology-insights';
+
+async function regenerateInsights() {
+  const analyses = await db.getAllAnalyses();
+  
+  for (const analysis of analyses) {
+    if (!analysis.technologyInsights && analysis.structured?.technical?.actualDetected) {
+      const insights = await insightsService.generateInsights(
+        analysis.structured.technical.actualDetected
+      );
+      
+      await db.updateAnalysis(analysis.id, {
+        technologyInsights: insights,
+        insightsGeneratedAt: new Date()
+      });
+    }
+  }
+}
+```
+
+**Option 3: No Migration**
+- Leave existing analyses as-is
+- Only new analyses will have insights
+- Simplest approach if historical data is not critical
+
+### Backward Compatibility
+
+The system is designed to be backward compatible:
+- Analyses without insights display normally
+- UI gracefully handles missing insights data
+- No breaking changes to existing functionality
+- Feature can be disabled via `ENABLE_TECH_DETECTION=false`
+
 ## Changelog
+
+### v3.1 (January 2025)
+- Added Technology Insights Engine with actionable recommendations
+- Implemented Technology Knowledge Base with 50+ technology profiles
+- Added Enhanced Complexity Calculator with detailed breakdown
+- Implemented Clonability Score combining technical, market, and resource factors
+- Added skill requirements analysis with learning resources
+- Implemented build-vs-buy recommendations with SaaS alternatives
+- Added time and cost estimation based on tech stack
+- Implemented 24-hour caching for insights
+- Enhanced Stage 3 and Stage 6 AI prompts with insights data
+- Added comprehensive UI components for insights display
 
 ### v3.0 (January 2025)
 - Added technology detection feature with Wappalyzer integration

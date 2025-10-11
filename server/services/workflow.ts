@@ -371,10 +371,10 @@ Respond ONLY with valid JSON.`;
 
   /**
    * Gets the AI prompt for Stage 3 (MVP Launch Planning)
-   * Requirements: 2.1, 2.2, 2.3, 2.4
+   * Requirements: 2.1, 2.2, 2.3, 2.4, 6.1, 6.2, 6.3, 6.4, 6.5
    * 
    * Identifies MVP features, tech stack, and timeline
-   * REFINED: Added clearer feature prioritization and realistic timeline guidance
+   * ENHANCED: Integrated technology insights, complexity breakdown, alternatives, and clonability score
    */
   getStage3Prompt(analysis: any): { prompt: string; systemPrompt: string } {
     const businessName = analysis.businessModel || analysis.url;
@@ -406,6 +406,82 @@ Respond ONLY with valid JSON.`;
       techStackInfo = 'Unknown';
     }
 
+    // Get enhanced technology insights
+    const insights = analysis.technologyInsights;
+    const enhancedComplexity = analysis.enhancedComplexity;
+    const clonabilityScore = analysis.clonabilityScore;
+
+    // Format complexity breakdown
+    let complexityBreakdown = '';
+    if (enhancedComplexity) {
+      complexityBreakdown = `
+COMPLEXITY BREAKDOWN:
+- Overall Complexity: ${enhancedComplexity.score}/10
+- Frontend Complexity: ${enhancedComplexity.breakdown.frontend.score}/${enhancedComplexity.breakdown.frontend.max} (Technologies: ${enhancedComplexity.breakdown.frontend.technologies.join(', ') || 'None'})
+- Backend Complexity: ${enhancedComplexity.breakdown.backend.score}/${enhancedComplexity.breakdown.backend.max} (Technologies: ${enhancedComplexity.breakdown.backend.technologies.join(', ') || 'None'})
+- Infrastructure Complexity: ${enhancedComplexity.breakdown.infrastructure.score}/${enhancedComplexity.breakdown.infrastructure.max} (Technologies: ${enhancedComplexity.breakdown.infrastructure.technologies.join(', ') || 'None'})
+- Contributing Factors:
+  * Custom Code Required: ${enhancedComplexity.factors.customCode ? 'Yes' : 'No'}
+  * Framework Complexity: ${enhancedComplexity.factors.frameworkComplexity}
+  * Infrastructure Complexity: ${enhancedComplexity.factors.infrastructureComplexity}
+  * Technology Count: ${enhancedComplexity.factors.technologyCount}
+  * Licensing Complexity: ${enhancedComplexity.factors.licensingComplexity ? 'Yes' : 'No'}
+- Explanation: ${enhancedComplexity.explanation}`;
+    }
+
+    // Format recommended alternatives
+    let alternativesInfo = '';
+    if (insights?.alternatives && Object.keys(insights.alternatives).length > 0) {
+      alternativesInfo = '\nRECOMMENDED ALTERNATIVES FOR MVP:';
+      for (const [tech, alts] of Object.entries(insights.alternatives)) {
+        if (Array.isArray(alts) && alts.length > 0) {
+          alternativesInfo += `\n- Instead of ${tech}, consider: ${alts.join(', ')}`;
+        }
+      }
+    }
+
+    // Format build vs buy recommendations
+    let buildVsBuyInfo = '';
+    if (insights?.buildVsBuy && insights.buildVsBuy.length > 0) {
+      buildVsBuyInfo = '\n\nBUILD VS BUY RECOMMENDATIONS:';
+      insights.buildVsBuy.forEach((rec: any) => {
+        buildVsBuyInfo += `\n- ${rec.technology}: ${rec.recommendation.toUpperCase()}`;
+        buildVsBuyInfo += `\n  Reasoning: ${rec.reasoning}`;
+        if (rec.alternatives && rec.alternatives.length > 0) {
+          buildVsBuyInfo += `\n  Alternatives: ${rec.alternatives.join(', ')}`;
+        }
+        if (rec.estimatedCost) {
+          buildVsBuyInfo += `\n  Cost Comparison: Build (${rec.estimatedCost.build}) vs Buy (${rec.estimatedCost.buy})`;
+        }
+      });
+    }
+
+    // Format estimated effort
+    let effortEstimates = '';
+    if (insights?.estimates) {
+      effortEstimates = `
+ESTIMATED EFFORT:
+- Development Time: ${insights.estimates.timeEstimate.minimum} to ${insights.estimates.timeEstimate.maximum} (Realistic: ${insights.estimates.timeEstimate.realistic})
+- Development Cost: ${insights.estimates.costEstimate.development}
+- Infrastructure Cost: ${insights.estimates.costEstimate.infrastructure}
+- Maintenance Cost: ${insights.estimates.costEstimate.maintenance}
+- Total Estimated Cost: ${insights.estimates.costEstimate.total}
+- Team Size: ${insights.estimates.teamSize.minimum} minimum, ${insights.estimates.teamSize.recommended} recommended`;
+    }
+
+    // Format clonability score
+    let clonabilityInfo = '';
+    if (clonabilityScore) {
+      clonabilityInfo = `
+CLONABILITY SCORE: ${clonabilityScore.score}/10 (${clonabilityScore.rating.toUpperCase()})
+- Technical Complexity Component: ${clonabilityScore.components.technicalComplexity.score}/10 (Weight: ${clonabilityScore.components.technicalComplexity.weight * 100}%)
+- Market Opportunity Component: ${clonabilityScore.components.marketOpportunity.score}/10 (Weight: ${clonabilityScore.components.marketOpportunity.weight * 100}%)
+- Resource Requirements Component: ${clonabilityScore.components.resourceRequirements.score}/10 (Weight: ${clonabilityScore.components.resourceRequirements.weight * 100}%)
+- Time to Market Component: ${clonabilityScore.components.timeToMarket.score}/10 (Weight: ${clonabilityScore.components.timeToMarket.weight * 100}%)
+- Recommendation: ${clonabilityScore.recommendation}
+- Confidence: ${(clonabilityScore.confidence * 100).toFixed(0)}%`;
+    }
+
     // Get Stage 2 data if available for context
     const stage2Data = analysis.stages?.[2]?.content;
     const effortScore = stage2Data?.effortScore || 'Unknown';
@@ -418,8 +494,10 @@ CRITICAL INSTRUCTIONS:
 - Focus on MINIMUM viable product - the smallest version that delivers core value
 - Prioritize features that enable monetization and user validation
 - Recommend modern, proven technologies that accelerate development
-- Provide realistic timelines based on the effort score from Stage 2
+- Provide realistic timelines based on the effort score from Stage 2 and technology insights
 - Consider no-code/low-code solutions where appropriate
+- Use the technology insights, complexity breakdown, and recommended alternatives to inform your recommendations
+- Clearly distinguish between the original tech stack and your recommended MVP stack
 - Every recommendation should be specific and actionable`;
 
     const prompt = `Create an MVP launch plan for this business opportunity.
@@ -432,10 +510,24 @@ BUSINESS CONTEXT:
 - Key Features: ${keyFeatures}
 - URL: ${analysis.url}
 
-TECHNOLOGY STACK ANALYSIS:
+ORIGINAL TECHNOLOGY STACK:
 ${techStackInfo}
+${complexityBreakdown}
+${alternativesInfo}
+${buildVsBuyInfo}
+${effortEstimates}
+${clonabilityInfo}
 
-IMPORTANT: When recommending a tech stack for the MVP, consider the detected technologies above. If actual technologies were detected via Wappalyzer, use them as a strong signal for what works for this type of business. Recommend compatible or similar technologies that align with the detected stack.
+IMPORTANT: The above analysis provides detailed insights about the original business's technology stack and complexity. Use this information to:
+1. Understand what technologies the original business uses and WHY they might have chosen them
+2. Identify opportunities to simplify the stack for an MVP using the recommended alternatives
+3. Consider build vs buy recommendations to reduce development time and complexity
+4. Base your timeline and cost estimates on the provided effort estimates
+5. Take the clonability score into account when making recommendations
+
+When recommending a tech stack for the MVP, clearly distinguish between:
+- ORIGINAL STACK: What the business currently uses (and why it works for them)
+- RECOMMENDED MVP STACK: Your simplified recommendations for getting to market quickly
 
 STAGE 2 CONTEXT (Lazy-Entrepreneur Filter):
 - Effort Score: ${effortScore}/10
@@ -445,6 +537,11 @@ STAGE 2 CONTEXT (Lazy-Entrepreneur Filter):
 Provide an MVP Launch Plan in this exact JSON format:
 
 {
+  "originalStackAnalysis": {
+    "technologies": ["List of technologies the original business uses"],
+    "strengths": ["Why these technologies work for the original business"],
+    "complexity": "Assessment of the original stack's complexity for an MVP"
+  },
   "coreFeatures": [
     "Essential feature 1 that delivers core value",
     "Essential feature 2 that enables monetization",
@@ -455,10 +552,11 @@ Provide an MVP Launch Plan in this exact JSON format:
     "Enhancement for future iteration",
     "Advanced feature for later"
   ],
-  "techStack": {
+  "recommendedMvpStack": {
     "frontend": ["React", "Tailwind CSS"],
     "backend": ["Node.js", "Express"],
-    "infrastructure": ["Vercel", "PostgreSQL"]
+    "infrastructure": ["Vercel", "PostgreSQL"],
+    "reasoning": "Explanation of why these technologies are recommended for the MVP, referencing the original stack and alternatives"
   },
   "timeline": [
     {
@@ -493,6 +591,12 @@ Provide an MVP Launch Plan in this exact JSON format:
 }
 
 REQUIREMENTS:
+- Original Stack Analysis: Analyze the original business's technology choices
+  * List the key technologies detected from the original business
+  * Explain why these technologies work well for the original business
+  * Assess whether the original stack is appropriate for an MVP or needs simplification
+  * Reference the complexity breakdown and clonability score in your analysis
+
 - Core features: 3-5 features that are ABSOLUTELY ESSENTIAL for the business to function
   * Must enable the core value proposition
   * Must enable monetization (payment, subscription, etc.)
@@ -504,15 +608,21 @@ REQUIREMENTS:
   * Advanced features that can be added after validation
   * Optimizations that can wait until there's user feedback
   
-- Tech stack: Recommend modern, proven technologies appropriate for the business
+- Recommended MVP Stack: Recommend modern, proven technologies appropriate for the MVP
   * Frontend: Specific framework (React, Vue, Next.js) + styling solution (Tailwind, CSS-in-JS)
   * Backend: Specific runtime and framework (Node.js + Express, Python + FastAPI, etc.)
   * Infrastructure: Specific hosting (Vercel, Railway, AWS), database (PostgreSQL, MongoDB), and key services
-  * **IMPORTANT**: If detected technologies are available, strongly consider recommending the same or compatible technologies
-  * If the detected stack includes specific frameworks/tools, explain why you're recommending them (or alternatives)
-  * Consider the complexity score - higher scores may indicate more sophisticated tech requirements
+  * Reasoning: Explain your technology choices, referencing:
+    - The original stack and why you're keeping or changing technologies
+    - The recommended alternatives from the technology insights
+    - The build vs buy recommendations (prefer SaaS solutions where suggested)
+    - The complexity breakdown (aim to reduce complexity for MVP)
+    - The clonability score (higher scores suggest simpler approaches work)
+  * **CRITICAL**: Clearly distinguish your MVP recommendations from the original stack
+  * If recommending the same technologies as the original, explain why they're still the best choice
+  * If recommending different technologies, explain the benefits (faster development, lower cost, simpler maintenance)
   * Consider the automation score - recommend no-code/low-code where appropriate
-  * Prioritize technologies that accelerate development
+  * Prioritize technologies that accelerate time to market
   
 - Timeline: Break into 3-4 phases with realistic durations
   * Adjust timeline based on effort score: Low effort (1-3) = 1-2 months, Medium (4-6) = 2-4 months, High (7-10) = 4-6 months
@@ -533,12 +643,19 @@ REQUIREMENTS:
 GUIDELINES:
 - Focus on MINIMUM viable product - what's the smallest version that delivers value?
 - Prioritize features that enable monetization and user validation FIRST
-- Choose tech stack based on: 1) Speed to market, 2) Developer availability, 3) Cost
+- **USE THE TECHNOLOGY INSIGHTS**: The complexity breakdown, alternatives, and build vs buy recommendations are provided to help you make informed decisions
+- **DISTINGUISH ORIGINAL VS MVP STACK**: Always analyze the original stack first, then recommend your MVP stack with clear reasoning
+- Choose tech stack based on: 1) Speed to market, 2) Developer availability, 3) Cost, 4) Insights from the original business
+- Leverage the recommended alternatives - they're specifically chosen to reduce complexity and accelerate development
+- Follow build vs buy recommendations - prefer SaaS solutions where suggested to save development time
+- Consider the clonability score - higher scores (8-10) suggest the original approach is already simple enough
 - Be specific about deliverables - avoid vague descriptions like "Build feature X"
-- Consider the effort score from Stage 2 when estimating timeline
+- Consider the effort score from Stage 2 and the estimated effort from technology insights when planning timeline
 - If automation score is high (>0.7), strongly recommend no-code/low-code solutions
 - Every feature should map to a specific user need or business requirement
-- Timeline should be aggressive but achievable - aim for 2-4 months total for most MVPs
+- Timeline should be aggressive but achievable - use the provided time estimates as a baseline
+- If the original stack is complex (complexity > 7), prioritize simplification in your MVP recommendations
+- If the original stack is already simple (complexity < 4), consider keeping similar technologies
 
 Respond ONLY with valid JSON.`;
 

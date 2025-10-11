@@ -203,6 +203,117 @@ export interface TechnicalAnalysis {
   detectedTechStack?: string[];
 }
 
+// Technology Insights types
+export interface TechnologyAlternative {
+  name: string;
+  reason: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  timeSavings: number;
+  complexityReduction: number;
+}
+
+export interface SaasAlternative {
+  name: string;
+  description: string;
+  pricing: string;
+  timeSavings: number;
+  tradeoffs: {
+    pros: string[];
+    cons: string[];
+  };
+  recommendedFor: 'mvp' | 'scale' | 'both';
+}
+
+export interface LearningResource {
+  title: string;
+  url: string;
+  type: 'documentation' | 'tutorial' | 'course' | 'video';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+export interface BuildVsBuyRecommendation {
+  technology: string;
+  recommendation: 'build' | 'buy' | 'hybrid';
+  reasoning: string;
+  alternatives: string[];
+  estimatedCost?: {
+    build: string;
+    buy: string;
+  };
+}
+
+export interface SkillRequirement {
+  skill: string;
+  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  category: string;
+  estimatedLearningTime?: string;
+}
+
+export interface Recommendation {
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  title: string;
+  description: string;
+  impact: string;
+}
+
+export interface ProjectEstimates {
+  timeEstimate: {
+    minimum: string;
+    maximum: string;
+    realistic: string;
+  };
+  costEstimate: {
+    development: string;
+    infrastructure: string;
+    maintenance: string;
+    total: string;
+  };
+  teamSize: {
+    minimum: number;
+    recommended: number;
+  };
+}
+
+export interface TechnologyInsights {
+  alternatives: Record<string, string[]>;
+  buildVsBuy: BuildVsBuyRecommendation[];
+  skills: SkillRequirement[];
+  estimates: ProjectEstimates;
+  recommendations: Recommendation[];
+  summary?: string;
+}
+
+export interface EnhancedComplexityResult {
+  score: number;
+  breakdown: {
+    frontend: { score: number; max: 3; technologies: string[] };
+    backend: { score: number; max: 4; technologies: string[] };
+    infrastructure: { score: number; max: 3; technologies: string[] };
+  };
+  factors: {
+    customCode: boolean;
+    frameworkComplexity: 'low' | 'medium' | 'high';
+    infrastructureComplexity: 'low' | 'medium' | 'high';
+    technologyCount: number;
+    licensingComplexity: boolean;
+  };
+  explanation: string;
+}
+
+export interface ClonabilityScore {
+  score: number;
+  rating: 'very-difficult' | 'difficult' | 'moderate' | 'easy' | 'very-easy';
+  components: {
+    technicalComplexity: { score: number; weight: number };
+    marketOpportunity: { score: number; weight: number };
+    resourceRequirements: { score: number; weight: number };
+    timeToMarket: { score: number; weight: number };
+  };
+  recommendation: string;
+  confidence: number;
+}
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
@@ -230,6 +341,11 @@ export const businessAnalyses = pgTable("business_analyses", {
   aiInsights: jsonb("ai_insights"),
   currentStage: integer("current_stage").default(1),
   stageData: jsonb("stage_data"),
+  // Technology insights fields
+  technologyInsights: jsonb("technology_insights"),
+  clonabilityScore: jsonb("clonability_score"),
+  enhancedComplexity: jsonb("enhanced_complexity"),
+  insightsGeneratedAt: timestamp("insights_generated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

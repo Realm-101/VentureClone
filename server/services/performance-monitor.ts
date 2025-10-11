@@ -11,6 +11,12 @@ interface DetectionMetric {
   isFallback: boolean;
 }
 
+interface InsightsMetric {
+  timestamp: string;
+  duration: number;
+  cacheHit: boolean;
+}
+
 interface PerformanceStats {
   totalDetections: number;
   successfulDetections: number;
@@ -22,14 +28,26 @@ interface PerformanceStats {
   slowDetections: number; // >10 seconds
 }
 
+interface InsightsStats {
+  totalGenerations: number;
+  cacheHits: number;
+  cacheMisses: number;
+  cacheHitRate: number;
+  averageGenerationTime: number;
+  slowGenerations: number; // >500ms
+}
+
 /**
  * Singleton service for monitoring tech detection performance
  */
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
   private metrics: DetectionMetric[] = [];
+  private insightsMetrics: InsightsMetric[] = [];
   private readonly maxMetrics = 1000; // Keep last 1000 metrics in memory
   private readonly slowThreshold = 10000; // 10 seconds
+  private readonly insightsSlowThreshold = 500; // 500ms
+  private monitoringInterval: NodeJS.Timeout | null = null;
 
   private constructor() {}
 
@@ -140,9 +158,110 @@ export class PerformanceMonitor {
   }
 
   /**
+   * Records an insights generation attempt
+   */
+  recordInsightsGeneration(duration: number, cacheHit: boolean): void {
+    const metric: InsightsMetric = {
+      timestamp: new Date().toISOString(),
+      duration,
+      cacheHit,
+    };
+
+    this.insightsMetrics.push(metric);
+
+    // Keep only the last N metrics
+    if (this.insightsMetrics.length > this.maxMetrics) {
+      this.insightsMetrics.shift();
+    }
+
+    // Log warning if generation was slow
+    if (!cacheHit && duration > this.insightsSlowThreshold) {
+      console.warn('[PerformanceMonitor] Slow insights generation detected', {
+        duration,
+        threshold: this.insightsSlowThreshold,
+        timestamp: metric.timestamp,
+      });
+    }
+  }
+
+  /**
+   * Gets insights generation statistics
+   */
+  getInsightsStats(): InsightsStats {
+    if (this.insightsMetrics.length === 0) {
+      return {
+        totalGenerations: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        cacheHitRate: 0,
+        averageGenerationTime: 0,
+        slowGenerations: 0,
+      };
+    }
+
+    const totalGenerations = this.insightsMetrics.length;
+    const cacheHits = this.insightsMetrics.filter(m => m.cacheHit).length;
+    const cacheMisses = totalGenerations - cacheHits;
+    const slowGenerations = this.insightsMetrics.filter(
+      m => !m.cacheHit && m.duration > this.insightsSlowThreshold
+    ).length;
+
+    const totalDuration = this.insightsMetrics.reduce((sum, m) => sum + m.duration, 0);
+    const averageGenerationTime = totalDuration / totalGenerations;
+
+    const cacheHitRate = (cacheHits / totalGenerations) * 100;
+
+    return {
+      totalGenerations,
+      cacheHits,
+      cacheMisses,
+      cacheHitRate: Math.round(cacheHitRate * 100) / 100,
+      averageGenerationTime: Math.round(averageGenerationTime),
+      slowGenerations,
+    };
+  }
+
+  /**
+   * Start periodic monitoring and logging
+   */
+  startMonitoring(): void {
+    if (this.monitoringInterval) {
+      return; // Already monitoring
+    }
+
+    // Log stats every 5 minutes
+    this.monitoringInterval = setInterval(() => {
+      const detectionStats = this.getStats();
+      const insightsStats = this.getInsightsStats();
+
+      if (detectionStats.totalDetections > 0 || insightsStats.totalGenerations > 0) {
+        console.log('[PerformanceMonitor] Periodic Stats Report', {
+          detection: detectionStats,
+          insights: insightsStats,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+
+  /**
+   * Stop periodic monitoring
+   */
+  stopMonitoring(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+  }
+
+  /**
    * Resets all metrics (useful for testing)
    */
   reset(): void {
     this.metrics = [];
+    this.insightsMetrics = [];
   }
 }
+
+// Export singleton instance
+export const performanceMonitor = PerformanceMonitor.getInstance();

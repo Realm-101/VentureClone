@@ -13,8 +13,14 @@ VentureClone AI is a comprehensive business analysis platform that helps entrepr
 - **Structured Reporting**: Comprehensive analysis reports with export capabilities
 - **Real-time Monitoring**: Performance tracking and system health monitoring
 
-### Recent Enhancements (v3.0 - January 2025)
+### Recent Enhancements (v3.1 - January 2025)
 
+- ✅ **Technology Insights Engine**: Actionable recommendations, alternatives, and build-vs-buy analysis
+- ✅ **Enhanced Complexity Analysis**: Detailed breakdown by frontend, backend, and infrastructure
+- ✅ **Clonability Scoring**: Comprehensive 1-10 score combining technical, market, and resource factors
+- ✅ **Time & Cost Estimates**: Realistic development time and cost projections based on tech stack
+- ✅ **Skill Requirements Analysis**: Detailed skill mapping with proficiency levels and learning resources
+- ✅ **Technology Knowledge Base**: 50+ technology profiles with alternatives and recommendations
 - ✅ **6-Stage Workflow System**: Complete business cloning workflow from discovery to AI automation
 - ✅ **Technology Detection Integration**: Wappalyzer-powered accurate tech stack detection with complexity scoring
 - ✅ **Enhanced Export Functionality**: PDF, HTML, and JSON exports for all stages and complete plans
@@ -58,11 +64,15 @@ VentureClone AI is a comprehensive business analysis platform that helps entrepr
 
 **Enhanced Services**:
 - **TechDetectionService**: Wappalyzer-based technology detection with retry logic and fallback
-- **ComplexityCalculator**: Automated complexity scoring (1-10 scale) based on detected technologies
+- **TechnologyInsightsService**: Generates actionable recommendations, alternatives, and estimates
+- **TechnologyKnowledgeBase**: 50+ technology profiles with alternatives and learning resources
+- **EnhancedComplexityCalculator**: Weighted scoring with frontend/backend/infrastructure breakdown
+- **ClonabilityScoreService**: Combines technical, market, and resource factors into 1-10 score
 - **BusinessImprovementService**: AI-powered improvement generation with validation
 - **Enhanced AI Providers**: Evidence-based prompts with confidence scoring
 - **Performance Monitor**: System health tracking with threshold alerts
 - **Concurrent Analysis Manager**: Queue-based request handling
+- **InsightsCache**: 24-hour caching for fast insights retrieval
 Data Storage Solutions
 Database: PostgreSQL with Drizzle ORM for type-safe database operations
 
@@ -316,13 +326,21 @@ VentureClone AI guides you through a systematic 6-stage process:
 
 ### Advanced Features
 
-#### Technology Detection
+#### Technology Detection & Insights
 
 - **Accurate Tech Stack Detection**: Wappalyzer-powered fingerprinting of actual technologies
-- **Complexity Scoring**: Automated 1-10 complexity score based on detected tech stack
+- **Actionable Insights**: Transforms raw tech data into concrete recommendations and alternatives
+- **Enhanced Complexity Analysis**: Detailed breakdown by frontend (0-3), backend (0-4), infrastructure (0-3)
+- **Clonability Scoring**: Comprehensive 1-10 score combining technical complexity (40%), market opportunity (30%), resource requirements (20%), and time-to-market (10%)
+- **Technology Alternatives**: Suggests 1-3 simpler alternatives for each detected technology with time savings
+- **Build vs Buy Recommendations**: Identifies custom solutions and suggests SaaS alternatives with cost/time comparisons
+- **Skill Requirements**: Maps required skills by category with proficiency levels and learning resources
+- **Time & Cost Estimates**: Realistic development time (months) and cost projections (one-time + monthly)
+- **Knowledge Base**: 50+ technology profiles with alternatives, costs, and learning resources
+- **Performance Optimized**: <500ms insights generation with 24-hour caching
 - **Parallel Execution**: Runs alongside AI analysis with minimal performance impact
 - **Graceful Fallback**: Automatically falls back to AI-only analysis if detection fails
-- **Enhanced AI Prompts**: Detected technologies inform Stage 3 and Stage 6 recommendations
+- **Enhanced AI Prompts**: Detected technologies and insights inform Stage 3 and Stage 6 recommendations
 - **Feature Flag Control**: Can be disabled via `ENABLE_TECH_DETECTION=false` for troubleshooting
 
 #### Business Improvement Generation
