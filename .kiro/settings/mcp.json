@@ -20,7 +20,7 @@
         "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
       ],
       "env": {},
-      "disabled": false,
+      "disabled": true,
       "autoApprove": [
         "list_pages",
         "new_page",
