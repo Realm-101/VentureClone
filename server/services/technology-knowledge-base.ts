@@ -79,7 +79,7 @@ class TechnologyKnowledgeBase {
     }
 
     try {
-      const dataPath = join(__dirname, '../data/technology-knowledge-base.json');
+      const dataPath = join(__dirname, 'data/technology-knowledge-base.json');
       const rawData = readFileSync(dataPath, 'utf-8');
       const data: TechnologyData = JSON.parse(rawData);
 
