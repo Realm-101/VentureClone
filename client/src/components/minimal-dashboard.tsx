@@ -34,12 +34,20 @@ function UrlInputForm({ onAnalysisStart, onAnalysisComplete }: UrlInputFormProps
       return false;
     }
 
+    // Auto-prepend https:// if no protocol is provided
+    let urlToValidate = urlString.trim();
+    if (!urlToValidate.match(/^https?:\/\//i)) {
+      urlToValidate = `https://${urlToValidate}`;
+    }
+
     try {
-      new URL(urlString);
+      new URL(urlToValidate);
       setValidationError(null);
+      // Update the URL field with the corrected URL
+      setUrl(urlToValidate);
       return true;
     } catch {
-      setValidationError('Please enter a valid URL (e.g., https://example.com)');
+      setValidationError('Please enter a valid URL (e.g., example.com or https://example.com)');
       return false;
     }
   };
