@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm run build:shared && npm run build:server && npm run build:client",
     "build:shared": "tsc --project shared/tsconfig.json",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/index.js --external:pg --external:lightningcss --external:@babel/preset-typescript",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/index.js --packages=external",
     "build:client": "vite build --outDir dist/public",
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:minimal": "cross-env STORAGE=mem VITE_ENABLE_EXTRAS=0 NODE_ENV=development tsx server/index.ts",
