@@ -1,0 +1,2 @@
+# Don't ignore build outputs - we need them at runtime
+!dist/
