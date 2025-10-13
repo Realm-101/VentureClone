@@ -31,6 +31,10 @@ const LoaderDemo = React.lazy(() => import("@/components/LoaderDemo").then(modul
 // Auth handler for Stack Auth
 const AuthHandler = React.lazy(() => import("@/pages/handler"));
 
+// Splash and protected pages
+const SplashPage = React.lazy(() => import("@/pages/splash"));
+const HomePage = React.lazy(() => import("@/pages/home"));
+
 /**
  * Error Boundary Component
  * Catches JavaScript errors anywhere in the child component tree
@@ -121,9 +125,10 @@ function Router() {
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
           <Route path="/handler/:rest*" component={AuthHandler} />
+          <Route path="/home" component={HomePage} />
           <Route path="/spiral" component={SpiralDemoPage} />
           <Route path="/loader-demo" component={LoaderDemo} />
-          <Route path="/" component={MinimalDashboard} />
+          <Route path="/" component={SplashPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -135,10 +140,12 @@ function Router() {
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
         <Route path="/handler/:rest*" component={AuthHandler} />
-        <Route path="/" component={Dashboard!} />
+        <Route path="/home" component={HomePage} />
+        <Route path="/dashboard" component={Dashboard!} />
         <Route path="/analytics" component={Analytics!} />
         <Route path="/spiral" component={SpiralDemoPage} />
         <Route path="/loader-demo" component={LoaderDemo} />
+        <Route path="/" component={SplashPage} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
