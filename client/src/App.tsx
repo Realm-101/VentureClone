@@ -28,6 +28,9 @@ const AIAssistant = isExperimentalEnabled()
 const SpiralDemoPage = React.lazy(() => import("@/pages/spiral-demo-page"));
 const LoaderDemo = React.lazy(() => import("@/components/LoaderDemo").then(module => ({ default: module.LoaderDemo })));
 
+// Auth handler for Stack Auth
+const AuthHandler = React.lazy(() => import("@/pages/handler"));
+
 /**
  * Error Boundary Component
  * Catches JavaScript errors anywhere in the child component tree
@@ -117,6 +120,7 @@ function Router() {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
+          <Route path="/handler/:rest*" component={AuthHandler} />
           <Route path="/spiral" component={SpiralDemoPage} />
           <Route path="/loader-demo" component={LoaderDemo} />
           <Route path="/" component={MinimalDashboard} />
@@ -130,6 +134,7 @@ function Router() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
+        <Route path="/handler/:rest*" component={AuthHandler} />
         <Route path="/" component={Dashboard!} />
         <Route path="/analytics" component={Analytics!} />
         <Route path="/spiral" component={SpiralDemoPage} />

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, ExternalLink, AlertCircle, Flame } from 'lucide-react';
+import { UserButton } from '@stackframe/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -272,16 +273,19 @@ export function MinimalDashboard() {
       {/* Simple Header */}
       <header className="border-b backdrop-blur-sm bg-background/80">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/images/Headerlogo.png" 
-              alt="VentureClone AI Logo" 
-              className="h-8 w-auto object-contain"
-            />
-            <div>
-              <h1 className="text-xl font-bold">VentureClone AI</h1>
-              <p className="text-sm text-muted-foreground">Business Analysis Tool</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/images/Headerlogo.png" 
+                alt="VentureClone AI Logo" 
+                className="h-8 w-auto object-contain"
+              />
+              <div>
+                <h1 className="text-xl font-bold">VentureClone AI</h1>
+                <p className="text-sm text-muted-foreground">Business Analysis Tool</p>
+              </div>
             </div>
+            <UserButton />
           </div>
         </div>
       </header>

@@ -1808,8 +1808,10 @@ var init_validation = __esm({
             if (hasTimeEstimate && hasMoneyEstimate) {
               checksPassed++;
             } else {
-              if (!hasTimeEstimate) issues.push("Time estimate is too vague or missing numbers");
-              if (!hasMoneyEstimate) issues.push("Money estimate is too vague or missing dollar amounts");
+              if (!hasTimeEstimate)
+                issues.push("Time estimate is too vague or missing numbers");
+              if (!hasMoneyEstimate)
+                issues.push("Money estimate is too vague or missing dollar amounts");
             }
           }
         }
@@ -1835,7 +1837,8 @@ var init_validation = __esm({
                 }
               }
             }
-            if (hasRealisticDurations) checksPassed++;
+            if (hasRealisticDurations)
+              checksPassed++;
           }
         }
         if (stageNumber === 4) {
@@ -2045,19 +2048,32 @@ var MemStorage = class {
       model: record.model,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    if (record.structured) analysis.structured = record.structured;
-    if (record.firstPartyData) analysis.firstPartyData = record.firstPartyData;
-    if (record.improvements) analysis.improvements = record.improvements;
-    if (record.technologyInsights) analysis.technologyInsights = record.technologyInsights;
-    if (record.clonabilityScore) analysis.clonabilityScore = record.clonabilityScore;
-    if (record.enhancedComplexity) analysis.enhancedComplexity = record.enhancedComplexity;
-    if (record.insightsGeneratedAt) analysis.insightsGeneratedAt = record.insightsGeneratedAt;
-    if (overallScore) analysis.overallScore = overallScore;
-    if (businessModel) analysis.businessModel = businessModel;
-    if (revenueStream) analysis.revenueStream = revenueStream;
-    if (targetMarket) analysis.targetMarket = targetMarket;
-    if (aiInsights) analysis.aiInsights = aiInsights;
-    if (scoreDetails) analysis.scoreDetails = scoreDetails;
+    if (record.structured)
+      analysis.structured = record.structured;
+    if (record.firstPartyData)
+      analysis.firstPartyData = record.firstPartyData;
+    if (record.improvements)
+      analysis.improvements = record.improvements;
+    if (record.technologyInsights)
+      analysis.technologyInsights = record.technologyInsights;
+    if (record.clonabilityScore)
+      analysis.clonabilityScore = record.clonabilityScore;
+    if (record.enhancedComplexity)
+      analysis.enhancedComplexity = record.enhancedComplexity;
+    if (record.insightsGeneratedAt)
+      analysis.insightsGeneratedAt = record.insightsGeneratedAt;
+    if (overallScore)
+      analysis.overallScore = overallScore;
+    if (businessModel)
+      analysis.businessModel = businessModel;
+    if (revenueStream)
+      analysis.revenueStream = revenueStream;
+    if (targetMarket)
+      analysis.targetMarket = targetMarket;
+    if (aiInsights)
+      analysis.aiInsights = aiInsights;
+    if (scoreDetails)
+      analysis.scoreDetails = scoreDetails;
     const userAnalyses = this.analyses.get(userId) || [];
     userAnalyses.push(analysis);
     this.analyses.set(userId, userAnalyses);
@@ -2065,11 +2081,16 @@ var MemStorage = class {
   }
   calculateScore(structured) {
     let score = 5;
-    if (structured.overview) score += 1;
-    if (structured.market?.competitors && structured.market.competitors.length > 0) score += 1;
-    if (structured.market?.swot) score += 1;
-    if (structured.technical?.techStack && structured.technical.techStack.length > 0) score += 1;
-    if (structured.synthesis?.keyInsights && structured.synthesis.keyInsights.length >= 3) score += 1;
+    if (structured.overview)
+      score += 1;
+    if (structured.market?.competitors && structured.market.competitors.length > 0)
+      score += 1;
+    if (structured.market?.swot)
+      score += 1;
+    if (structured.technical?.techStack && structured.technical.techStack.length > 0)
+      score += 1;
+    if (structured.synthesis?.keyInsights && structured.synthesis.keyInsights.length >= 3)
+      score += 1;
     return Math.min(10, Math.max(1, score));
   }
   async deleteAnalysis(userId, id) {
@@ -2648,7 +2669,8 @@ var AIProviderService = class {
     }
   }
   async generateOpenAIContent(prompt, systemPrompt) {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    if (!this.openaiClient)
+      throw new Error("OpenAI client not initialized");
     const messages = [];
     if (systemPrompt) {
       messages.push({ role: "system", content: systemPrompt });
@@ -2672,7 +2694,8 @@ var AIProviderService = class {
     return aiResponse;
   }
   async generateOpenAIStructuredContent(prompt, schema, systemPrompt) {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    if (!this.openaiClient)
+      throw new Error("OpenAI client not initialized");
     const messages = [];
     if (systemPrompt) {
       messages.push({ role: "system", content: systemPrompt });
@@ -2687,7 +2710,8 @@ var AIProviderService = class {
     return content ? JSON.parse(content) : null;
   }
   async generateGPT5Content(prompt, systemPrompt) {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    if (!this.openaiClient)
+      throw new Error("OpenAI client not initialized");
     const messages = [];
     if (systemPrompt) {
       messages.push({ role: "system", content: systemPrompt });
@@ -2711,7 +2735,8 @@ var AIProviderService = class {
     return aiResponse;
   }
   async generateGPT5StructuredContent(prompt, schema, systemPrompt) {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    if (!this.openaiClient)
+      throw new Error("OpenAI client not initialized");
     const messages = [];
     if (systemPrompt) {
       messages.push({ role: "system", content: systemPrompt });
@@ -2726,7 +2751,8 @@ var AIProviderService = class {
     return content ? JSON.parse(content) : null;
   }
   async generateGeminiContent(prompt, systemPrompt) {
-    if (!this.geminiClient) throw new Error("Gemini client not initialized");
+    if (!this.geminiClient)
+      throw new Error("Gemini client not initialized");
     try {
       const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.5-pro" });
       const fullPrompt = systemPrompt ? `${systemPrompt}
@@ -2758,7 +2784,8 @@ ${prompt}` : prompt;
     }
   }
   async generateGeminiStructuredContent(prompt, schema, systemPrompt) {
-    if (!this.geminiClient) throw new Error("Gemini client not initialized");
+    if (!this.geminiClient)
+      throw new Error("Gemini client not initialized");
     try {
       console.log(`Gemini structured API request starting (timeout: ${this.timeoutMs}ms)...`);
       const startTime = Date.now();
@@ -2803,7 +2830,8 @@ ${prompt}` : prompt;
     }
   }
   async generateGrokContent(prompt, systemPrompt) {
-    if (!this.grokClient) throw new Error("Grok client not initialized");
+    if (!this.grokClient)
+      throw new Error("Grok client not initialized");
     const messages = [];
     if (systemPrompt) {
       messages.push({ role: "system", content: systemPrompt });
@@ -2826,7 +2854,8 @@ ${prompt}` : prompt;
     return aiResponse;
   }
   async generateGrokStructuredContent(prompt, schema, systemPrompt) {
-    if (!this.grokClient) throw new Error("Grok client not initialized");
+    if (!this.grokClient)
+      throw new Error("Grok client not initialized");
     try {
       const messages = [];
       if (systemPrompt) {
@@ -3112,7 +3141,8 @@ async function fetchFirstParty(url, timeoutMs = 1e4) {
       try {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done)
+            break;
           totalSize += value.length;
           if (totalSize > maxSize) {
             console.warn(`HTML content too large for ${url}, truncating at ${maxSize} bytes`);
@@ -3166,7 +3196,8 @@ async function fetchFirstParty(url, timeoutMs = 1e4) {
       let mainContent;
       for (const selector of contentSelectors) {
         mainContent = $(selector).first();
-        if (mainContent.length > 0) break;
+        if (mainContent.length > 0)
+          break;
       }
       if (mainContent && mainContent.length > 0) {
         textSnippet = mainContent.text();
@@ -6026,17 +6057,22 @@ var ComplexityCalculator = class {
    * Determines framework complexity level
    */
   determineFrameworkComplexity(hasNoCode, hasModernFramework, hasComplexBackend) {
-    if (hasNoCode) return "low";
-    if (hasComplexBackend) return "high";
-    if (hasModernFramework) return "medium";
+    if (hasNoCode)
+      return "low";
+    if (hasComplexBackend)
+      return "high";
+    if (hasModernFramework)
+      return "medium";
     return "low";
   }
   /**
    * Determines infrastructure complexity level
    */
   determineInfrastructureComplexity(hasMicroservices, hasCustomInfra) {
-    if (hasMicroservices) return "high";
-    if (hasCustomInfra) return "medium";
+    if (hasMicroservices)
+      return "high";
+    if (hasCustomInfra)
+      return "medium";
     return "low";
   }
 };
@@ -6730,7 +6766,8 @@ var TechnologyInsightsService = class {
     const recommendations = [];
     for (const tech of technologies) {
       const profile = technologyKnowledgeBase.getTechnology(tech.name);
-      if (!profile) continue;
+      if (!profile)
+        continue;
       const recommendation = this.determineBuildVsBuy(profile);
       recommendations.push({
         technology: tech.name,
@@ -6836,7 +6873,8 @@ var TechnologyInsightsService = class {
     const skillsMap = /* @__PURE__ */ new Map();
     for (const tech of technologies) {
       const profile = technologyKnowledgeBase.getTechnology(tech.name);
-      if (!profile) continue;
+      if (!profile)
+        continue;
       const proficiency = this.mapDifficultyToProficiency(profile.difficulty);
       const learningTime = this.estimateLearningTime(profile.difficulty);
       const skillKey = `${profile.name}-${profile.category}`;
@@ -6859,7 +6897,8 @@ var TechnologyInsightsService = class {
     return Array.from(skillsMap.values()).sort((a, b) => {
       const proficiencyOrder = { expert: 0, advanced: 1, intermediate: 2, beginner: 3 };
       const profDiff = proficiencyOrder[a.proficiency] - proficiencyOrder[b.proficiency];
-      if (profDiff !== 0) return profDiff;
+      if (profDiff !== 0)
+        return profDiff;
       return a.category.localeCompare(b.category);
     });
   }
@@ -7145,7 +7184,8 @@ var TechnologyInsightsService = class {
       }
     };
     const typeRanges = ranges[type];
-    if (!typeRanges) return "$0";
+    if (!typeRanges)
+      return "$0";
     return typeRanges[level] ?? typeRanges["medium"] ?? "$0";
   }
   /**
@@ -7293,9 +7333,12 @@ var TechnologyInsightsService = class {
    * Estimate savings from using SaaS
    */
   estimateSavings(count) {
-    if (count === 1) return "$5,000-$15,000";
-    if (count === 2) return "$15,000-$30,000";
-    if (count >= 3) return "$30,000-$50,000";
+    if (count === 1)
+      return "$5,000-$15,000";
+    if (count === 2)
+      return "$15,000-$30,000";
+    if (count >= 3)
+      return "$30,000-$50,000";
     return "$5,000+";
   }
   /**
@@ -7486,10 +7529,14 @@ var ClonabilityScoreService = class {
    * Map score to rating
    */
   getRating(score) {
-    if (score >= 9) return "very-easy";
-    if (score >= 7) return "easy";
-    if (score >= 5) return "moderate";
-    if (score >= 3) return "difficult";
+    if (score >= 9)
+      return "very-easy";
+    if (score >= 7)
+      return "easy";
+    if (score >= 5)
+      return "moderate";
+    if (score >= 3)
+      return "difficult";
     return "very-difficult";
   }
   /**
