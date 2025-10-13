@@ -72,9 +72,16 @@ export function serveStatic(app: Express) {
   const distPath = path.resolve(process.cwd(), "dist/public");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    console.warn(`Warning: Static files not found at ${distPath}. Running in API-only mode.`);
+    console.warn(`Build output may not have been preserved. Check Render's publish directory settings.`);
+    // Serve a simple message instead of crashing
+    app.use("*", (_req, res) => {
+      res.status(503).json({ 
+        error: "Static files not available", 
+        message: "API is running but frontend assets were not found. This is a deployment configuration issue."
+      });
+    });
+    return;
   }
 
   app.use(express.static(distPath));
