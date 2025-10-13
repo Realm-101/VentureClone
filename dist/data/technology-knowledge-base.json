@@ -1,0 +1,1144 @@
+{
+  "technologies": [
+    {
+      "name": "React",
+      "category": "frontend-framework",
+      "difficulty": "medium",
+      "description": "A JavaScript library for building user interfaces with component-based architecture",
+      "alternatives": ["Vue.js", "Angular", "Svelte"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://react.dev",
+        "https://reactjs.org/tutorial",
+        "https://egghead.io/courses/the-beginner-s-guide-to-react"
+      ],
+      "typicalUseCase": "Single-page applications, dynamic UIs, component-driven development",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Vue.js",
+      "category": "frontend-framework",
+      "difficulty": "easy",
+      "description": "Progressive JavaScript framework for building user interfaces",
+      "alternatives": ["React", "Angular", "Svelte"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://vuejs.org/guide",
+        "https://vueschool.io",
+        "https://www.vuemastery.com"
+      ],
+      "typicalUseCase": "Progressive web apps, interactive interfaces, gradual adoption",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Angular",
+      "category": "frontend-framework",
+      "difficulty": "hard",
+      "description": "Comprehensive TypeScript-based framework for building web applications",
+      "alternatives": ["React", "Vue.js", "Svelte"],
+      "costEstimate": {
+        "development": "high",
+        "hosting": "low",
+        "maintenance": "high"
+      },
+      "learningResources": [
+        "https://angular.io/docs",
+        "https://angular.io/tutorial",
+        "https://www.udemy.com/topic/angular/"
+      ],
+      "typicalUseCase": "Enterprise applications, large-scale SPAs, complex business logic",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Svelte",
+      "category": "frontend-framework",
+      "difficulty": "easy",
+      "description": "Compiler-based framework that shifts work to compile time for faster runtime",
+      "alternatives": ["React", "Vue.js", "Solid.js"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "very-low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://svelte.dev/tutorial",
+        "https://learn.svelte.dev",
+        "https://svelte.dev/docs"
+      ],
+      "typicalUseCase": "Performance-critical apps, small to medium projects, modern web apps",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Next.js",
+      "category": "frontend-framework",
+      "difficulty": "medium",
+      "description": "React framework with server-side rendering, static generation, and API routes",
+      "alternatives": ["Remix", "Gatsby", "Nuxt.js"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://nextjs.org/learn",
+        "https://nextjs.org/docs",
+        "https://www.youtube.com/c/LeeRobinson"
+      ],
+      "typicalUseCase": "SEO-optimized sites, full-stack React apps, e-commerce platforms",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Nuxt.js",
+      "category": "frontend-framework",
+      "difficulty": "medium",
+      "description": "Vue.js framework with server-side rendering and static site generation",
+      "alternatives": ["Next.js", "Gridsome", "Quasar"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://nuxt.com/docs",
+        "https://masteringnuxt.com",
+        "https://vueschool.io/courses/nuxtjs-fundamentals"
+      ],
+      "typicalUseCase": "Universal Vue apps, static sites, SEO-focused applications",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Gatsby",
+      "category": "frontend-framework",
+      "difficulty": "medium",
+      "description": "React-based static site generator with GraphQL data layer",
+      "alternatives": ["Next.js", "Astro", "Hugo"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "very-low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.gatsbyjs.com/docs/tutorial/",
+        "https://www.gatsbyjs.com/docs/",
+        "https://egghead.io/courses/build-a-blog-with-react-and-markdown-using-gatsby"
+      ],
+      "typicalUseCase": "Blogs, marketing sites, documentation sites, portfolios",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Astro",
+      "category": "frontend-framework",
+      "difficulty": "easy",
+      "description": "Modern static site builder with partial hydration and framework-agnostic components",
+      "alternatives": ["Next.js", "Gatsby", "Eleventy"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "very-low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://docs.astro.build/en/getting-started/",
+        "https://astro.build/blog/",
+        "https://www.youtube.com/c/Astrodotbuild"
+      ],
+      "typicalUseCase": "Content-focused sites, blogs, documentation, marketing pages",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Express.js",
+      "category": "backend-framework",
+      "difficulty": "easy",
+      "description": "Minimal and flexible Node.js web application framework",
+      "alternatives": ["Fastify", "Koa", "NestJS"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://expressjs.com/en/starter/installing.html",
+        "https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs",
+        "https://www.udemy.com/topic/express-js/"
+      ],
+      "typicalUseCase": "REST APIs, web servers, microservices",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "FastAPI",
+      "category": "backend-framework",
+      "difficulty": "easy",
+      "description": "Modern Python framework for building APIs with automatic documentation",
+      "alternatives": ["Django", "Flask", "Express.js"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://fastapi.tiangolo.com/tutorial/",
+        "https://fastapi.tiangolo.com",
+        "https://testdriven.io/blog/fastapi-crud/"
+      ],
+      "typicalUseCase": "REST APIs, microservices, ML model serving, async applications",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "NestJS",
+      "category": "backend-framework",
+      "difficulty": "medium",
+      "description": "Progressive Node.js framework with TypeScript and Angular-inspired architecture",
+      "alternatives": ["Express.js", "Fastify", "Koa"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://docs.nestjs.com",
+        "https://nestjs.com/learn",
+        "https://www.udemy.com/topic/nestjs/"
+      ],
+      "typicalUseCase": "Enterprise APIs, scalable microservices, GraphQL servers",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Spring Boot",
+      "category": "backend-framework",
+      "difficulty": "hard",
+      "description": "Java framework for building production-ready enterprise applications",
+      "alternatives": ["Quarkus", "Micronaut", "Django"],
+      "costEstimate": {
+        "development": "high",
+        "hosting": "medium-to-high",
+        "maintenance": "high"
+      },
+      "learningResources": [
+        "https://spring.io/guides",
+        "https://spring.io/projects/spring-boot",
+        "https://www.baeldung.com/spring-boot"
+      ],
+      "typicalUseCase": "Enterprise applications, microservices, banking systems, large-scale APIs",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Django",
+      "category": "backend-framework",
+      "difficulty": "medium",
+      "description": "High-level Python web framework with batteries included",
+      "alternatives": ["Flask", "FastAPI", "Rails"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://docs.djangoproject.com/en/stable/intro/tutorial01/",
+        "https://www.djangoproject.com/start/",
+        "https://realpython.com/tutorials/django/"
+      ],
+      "typicalUseCase": "Full-stack web apps, content management, admin interfaces",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Ruby on Rails",
+      "category": "backend-framework",
+      "difficulty": "medium",
+      "description": "Convention-over-configuration web framework for Ruby",
+      "alternatives": ["Django", "Laravel", "Phoenix"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://guides.rubyonrails.org/getting_started.html",
+        "https://www.railstutorial.org",
+        "https://gorails.com"
+      ],
+      "typicalUseCase": "Rapid prototyping, MVPs, full-stack applications",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Laravel",
+      "category": "backend-framework",
+      "difficulty": "medium",
+      "description": "Elegant PHP framework with expressive syntax",
+      "alternatives": ["Symfony", "CodeIgniter", "Django"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://laravel.com/docs",
+        "https://laracasts.com",
+        "https://laravel-news.com"
+      ],
+      "typicalUseCase": "Web applications, APIs, e-commerce platforms",
+      "marketDemand": "high"
+    },
+    {
+      "name": "PostgreSQL",
+      "category": "database",
+      "difficulty": "medium",
+      "description": "Advanced open-source relational database with strong ACID compliance",
+      "alternatives": ["MySQL", "MongoDB", "SQLite"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://www.postgresql.org/docs/",
+        "https://www.postgresqltutorial.com",
+        "https://www.crunchydata.com/developers/tutorials"
+      ],
+      "typicalUseCase": "Complex queries, data integrity, enterprise applications",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "MongoDB",
+      "category": "database",
+      "difficulty": "easy",
+      "description": "NoSQL document database with flexible schema",
+      "alternatives": ["PostgreSQL", "DynamoDB", "CouchDB"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.mongodb.com/docs/manual/tutorial/",
+        "https://university.mongodb.com",
+        "https://www.mongodb.com/developer/"
+      ],
+      "typicalUseCase": "Flexible schemas, rapid development, real-time applications",
+      "marketDemand": "high"
+    },
+    {
+      "name": "MySQL",
+      "category": "database",
+      "difficulty": "easy",
+      "description": "Popular open-source relational database management system",
+      "alternatives": ["PostgreSQL", "MariaDB", "SQLite"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://dev.mysql.com/doc/",
+        "https://www.mysqltutorial.org",
+        "https://www.w3schools.com/mysql/"
+      ],
+      "typicalUseCase": "Web applications, content management, e-commerce",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Redis",
+      "category": "database",
+      "difficulty": "easy",
+      "description": "In-memory data structure store used as cache and message broker",
+      "alternatives": ["Memcached", "Valkey", "DragonflyDB"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://redis.io/docs/",
+        "https://try.redis.io",
+        "https://university.redis.com"
+      ],
+      "typicalUseCase": "Caching, session storage, real-time analytics, pub/sub",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Supabase",
+      "category": "database",
+      "difficulty": "easy",
+      "description": "Open-source Firebase alternative with PostgreSQL, auth, and real-time features",
+      "alternatives": ["Firebase", "PlanetScale", "Neon"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://supabase.com/docs",
+        "https://supabase.com/docs/guides/database",
+        "https://supabase.com/blog"
+      ],
+      "typicalUseCase": "Full-stack apps, real-time features, PostgreSQL-based projects",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Firebase",
+      "category": "database",
+      "difficulty": "very-easy",
+      "description": "Google's NoSQL cloud database with real-time synchronization",
+      "alternatives": ["Supabase", "AWS Amplify", "MongoDB Atlas"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://firebase.google.com/docs/firestore",
+        "https://firebase.google.com/codelabs",
+        "https://www.youtube.com/firebase"
+      ],
+      "typicalUseCase": "Mobile apps, real-time apps, rapid prototyping",
+      "marketDemand": "high"
+    },
+    {
+      "name": "DynamoDB",
+      "category": "database",
+      "difficulty": "medium",
+      "description": "AWS fully managed NoSQL database with single-digit millisecond performance",
+      "alternatives": ["MongoDB", "Cassandra", "Firebase"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "variable",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://docs.aws.amazon.com/dynamodb/",
+        "https://www.dynamodbguide.com",
+        "https://aws.amazon.com/dynamodb/getting-started/"
+      ],
+      "typicalUseCase": "High-scale applications, serverless architectures, gaming leaderboards",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Cassandra",
+      "category": "database",
+      "difficulty": "hard",
+      "description": "Distributed NoSQL database designed for high availability and scalability",
+      "alternatives": ["DynamoDB", "ScyllaDB", "MongoDB"],
+      "costEstimate": {
+        "development": "high",
+        "hosting": "medium-to-high",
+        "maintenance": "high"
+      },
+      "learningResources": [
+        "https://cassandra.apache.org/doc/latest/",
+        "https://www.datastax.com/learn",
+        "https://university.scylladb.com"
+      ],
+      "typicalUseCase": "Time-series data, IoT applications, high-write workloads",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Vercel",
+      "category": "hosting-platform",
+      "difficulty": "very-easy",
+      "description": "Cloud platform for static sites and serverless functions",
+      "alternatives": ["Netlify", "AWS Amplify", "Cloudflare Pages"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://vercel.com/docs",
+        "https://vercel.com/guides",
+        "https://vercel.com/templates"
+      ],
+      "typicalUseCase": "Next.js apps, static sites, serverless APIs, frontend deployments",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Netlify",
+      "category": "hosting-platform",
+      "difficulty": "very-easy",
+      "description": "Platform for deploying and hosting modern web projects with CI/CD",
+      "alternatives": ["Vercel", "Cloudflare Pages", "AWS Amplify"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://docs.netlify.com",
+        "https://www.netlify.com/blog/",
+        "https://explorers.netlify.com"
+      ],
+      "typicalUseCase": "JAMstack sites, static sites, serverless functions, form handling",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Railway",
+      "category": "hosting-platform",
+      "difficulty": "very-easy",
+      "description": "Modern platform for deploying full-stack applications with databases",
+      "alternatives": ["Render", "Fly.io", "Heroku"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://docs.railway.app",
+        "https://railway.app/templates",
+        "https://blog.railway.app"
+      ],
+      "typicalUseCase": "Full-stack apps, databases, Docker containers, monorepos",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Fly.io",
+      "category": "hosting-platform",
+      "difficulty": "easy",
+      "description": "Platform for running applications globally with edge computing",
+      "alternatives": ["Railway", "Render", "AWS"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://fly.io/docs/",
+        "https://fly.io/docs/hands-on/",
+        "https://fly.io/blog/"
+      ],
+      "typicalUseCase": "Global applications, Docker deployments, low-latency apps",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Render",
+      "category": "hosting-platform",
+      "difficulty": "very-easy",
+      "description": "Unified cloud platform for web apps, static sites, and databases",
+      "alternatives": ["Railway", "Fly.io", "Heroku"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://render.com/docs",
+        "https://render.com/docs/deploy-node-express-app",
+        "https://community.render.com"
+      ],
+      "typicalUseCase": "Web services, static sites, PostgreSQL databases, cron jobs",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "AWS",
+      "category": "hosting-platform",
+      "difficulty": "hard",
+      "description": "Comprehensive cloud computing platform with extensive services",
+      "alternatives": ["Google Cloud", "Azure", "DigitalOcean"],
+      "costEstimate": {
+        "development": "medium-to-high",
+        "hosting": "variable",
+        "maintenance": "high"
+      },
+      "learningResources": [
+        "https://aws.amazon.com/getting-started/",
+        "https://aws.amazon.com/training/",
+        "https://docs.aws.amazon.com"
+      ],
+      "typicalUseCase": "Enterprise applications, scalable infrastructure, complex architectures",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Heroku",
+      "category": "hosting-platform",
+      "difficulty": "very-easy",
+      "description": "Platform as a Service with simple deployment workflow",
+      "alternatives": ["Railway", "Render", "Fly.io"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://devcenter.heroku.com",
+        "https://www.heroku.com/getting-started",
+        "https://devcenter.heroku.com/categories/reference"
+      ],
+      "typicalUseCase": "Quick deployments, prototypes, small to medium applications",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "DigitalOcean",
+      "category": "hosting-platform",
+      "difficulty": "medium",
+      "description": "Developer-friendly cloud infrastructure provider",
+      "alternatives": ["Linode", "Vultr", "AWS Lightsail"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://docs.digitalocean.com",
+        "https://www.digitalocean.com/community/tutorials",
+        "https://www.digitalocean.com/resources"
+      ],
+      "typicalUseCase": "VPS hosting, containerized apps, managed databases",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Contentful",
+      "category": "cms",
+      "difficulty": "easy",
+      "description": "API-first headless CMS for content management across platforms",
+      "alternatives": ["Sanity", "Strapi", "Prismic"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-high",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.contentful.com/developers/docs/",
+        "https://www.contentful.com/developers/docs/tutorials/",
+        "https://www.contentful.com/blog/"
+      ],
+      "typicalUseCase": "Multi-channel content, marketing sites, e-commerce content",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Sanity",
+      "category": "cms",
+      "difficulty": "easy",
+      "description": "Structured content platform with real-time collaboration and flexible schemas",
+      "alternatives": ["Contentful", "Strapi", "Prismic"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.sanity.io/docs",
+        "https://www.sanity.io/guides",
+        "https://www.sanity.io/exchange"
+      ],
+      "typicalUseCase": "Content-heavy sites, editorial workflows, e-commerce",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Strapi",
+      "category": "cms",
+      "difficulty": "easy",
+      "description": "Open-source headless CMS with customizable API and admin panel",
+      "alternatives": ["Contentful", "Sanity", "Directus"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://docs.strapi.io",
+        "https://strapi.io/blog",
+        "https://www.youtube.com/c/Strapi"
+      ],
+      "typicalUseCase": "Custom APIs, content management, self-hosted solutions",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Ghost",
+      "category": "cms",
+      "difficulty": "easy",
+      "description": "Open-source publishing platform focused on professional publishing",
+      "alternatives": ["WordPress", "Medium", "Substack"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://ghost.org/docs/",
+        "https://ghost.org/tutorials/",
+        "https://forum.ghost.org"
+      ],
+      "typicalUseCase": "Blogs, newsletters, membership sites, publications",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "WordPress",
+      "category": "cms",
+      "difficulty": "easy",
+      "description": "Most popular CMS powering over 40% of websites",
+      "alternatives": ["Ghost", "Drupal", "Joomla"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low-to-medium"
+      },
+      "learningResources": [
+        "https://wordpress.org/support/",
+        "https://learn.wordpress.org",
+        "https://www.wpbeginner.com"
+      ],
+      "typicalUseCase": "Blogs, business sites, e-commerce, portfolios",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Stripe",
+      "category": "payment-processor",
+      "difficulty": "easy",
+      "description": "Complete payment platform with APIs for online and in-person payments",
+      "alternatives": ["PayPal", "Square", "Lemon Squeezy"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "pay-per-transaction",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://stripe.com/docs",
+        "https://stripe.com/docs/payments",
+        "https://www.youtube.com/c/StripeDev"
+      ],
+      "typicalUseCase": "E-commerce, subscriptions, marketplaces, SaaS billing",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "PayPal",
+      "category": "payment-processor",
+      "difficulty": "easy",
+      "description": "Global payment platform with buyer and seller protection",
+      "alternatives": ["Stripe", "Square", "Braintree"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "pay-per-transaction",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://developer.paypal.com/docs/",
+        "https://developer.paypal.com/api/rest/",
+        "https://www.paypal.com/us/webapps/mpp/merchant"
+      ],
+      "typicalUseCase": "E-commerce, international payments, peer-to-peer transfers",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Square",
+      "category": "payment-processor",
+      "difficulty": "easy",
+      "description": "Payment processing for online and in-person transactions",
+      "alternatives": ["Stripe", "PayPal", "Clover"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "pay-per-transaction",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://developer.squareup.com/docs",
+        "https://developer.squareup.com/us/en",
+        "https://squareup.com/help"
+      ],
+      "typicalUseCase": "Retail, restaurants, online stores, appointment booking",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Lemon Squeezy",
+      "category": "payment-processor",
+      "difficulty": "very-easy",
+      "description": "All-in-one platform for digital product sales with tax handling",
+      "alternatives": ["Stripe", "Gumroad", "Paddle"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "pay-per-transaction",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://docs.lemonsqueezy.com",
+        "https://www.lemonsqueezy.com/help",
+        "https://www.lemonsqueezy.com/blog"
+      ],
+      "typicalUseCase": "Digital products, SaaS, courses, software licenses",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Webflow",
+      "category": "no-code-platform",
+      "difficulty": "easy",
+      "description": "Visual web design platform with CMS and hosting",
+      "alternatives": ["Wix", "Squarespace", "Framer"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://university.webflow.com",
+        "https://webflow.com/blog",
+        "https://www.youtube.com/c/Webflow"
+      ],
+      "typicalUseCase": "Marketing sites, portfolios, landing pages, business websites",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Wix",
+      "category": "no-code-platform",
+      "difficulty": "very-easy",
+      "description": "Drag-and-drop website builder with templates and apps",
+      "alternatives": ["Squarespace", "Webflow", "WordPress"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "low",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://support.wix.com",
+        "https://www.wix.com/learn",
+        "https://www.youtube.com/c/Wix"
+      ],
+      "typicalUseCase": "Small business sites, portfolios, online stores, blogs",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Squarespace",
+      "category": "no-code-platform",
+      "difficulty": "very-easy",
+      "description": "All-in-one website builder with designer templates",
+      "alternatives": ["Wix", "Webflow", "Shopify"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "low-to-medium",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://support.squarespace.com",
+        "https://www.squarespace.com/blog",
+        "https://www.youtube.com/c/Squarespace"
+      ],
+      "typicalUseCase": "Portfolios, blogs, small e-commerce, creative businesses",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Shopify",
+      "category": "no-code-platform",
+      "difficulty": "easy",
+      "description": "Complete e-commerce platform for online stores",
+      "alternatives": ["WooCommerce", "BigCommerce", "Wix"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://help.shopify.com",
+        "https://www.shopify.com/blog",
+        "https://www.youtube.com/c/Shopify"
+      ],
+      "typicalUseCase": "E-commerce stores, dropshipping, retail, digital products",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Bubble",
+      "category": "no-code-platform",
+      "difficulty": "medium",
+      "description": "Visual programming platform for building web applications without code",
+      "alternatives": ["Webflow", "Adalo", "FlutterFlow"],
+      "costEstimate": {
+        "development": "low-to-medium",
+        "hosting": "low-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://bubble.io/lessons",
+        "https://manual.bubble.io",
+        "https://www.youtube.com/c/Bubble"
+      ],
+      "typicalUseCase": "MVPs, SaaS products, marketplaces, internal tools",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Clerk",
+      "category": "authentication-service",
+      "difficulty": "very-easy",
+      "description": "Complete user management and authentication solution",
+      "alternatives": ["Auth0", "Firebase Auth", "Supabase Auth"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://clerk.com/docs",
+        "https://clerk.com/docs/quickstarts",
+        "https://clerk.com/blog"
+      ],
+      "typicalUseCase": "Modern web apps, SaaS products, user management",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Auth0",
+      "category": "authentication-service",
+      "difficulty": "easy",
+      "description": "Enterprise-grade authentication and authorization platform",
+      "alternatives": ["Clerk", "Firebase Auth", "AWS Cognito"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-high",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://auth0.com/docs",
+        "https://auth0.com/docs/quickstarts",
+        "https://auth0.com/learn"
+      ],
+      "typicalUseCase": "Enterprise apps, multi-tenant systems, complex auth flows",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Firebase Auth",
+      "category": "authentication-service",
+      "difficulty": "very-easy",
+      "description": "Google's authentication service with multiple providers",
+      "alternatives": ["Clerk", "Auth0", "Supabase Auth"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-low",
+        "maintenance": "very-low"
+      },
+      "learningResources": [
+        "https://firebase.google.com/docs/auth",
+        "https://firebase.google.com/codelabs",
+        "https://firebase.google.com/community"
+      ],
+      "typicalUseCase": "Mobile apps, web apps, social login integration",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Supabase Auth",
+      "category": "authentication-service",
+      "difficulty": "easy",
+      "description": "Open-source authentication with PostgreSQL backend",
+      "alternatives": ["Firebase Auth", "Clerk", "Auth0"],
+      "costEstimate": {
+        "development": "very-low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://supabase.com/docs/guides/auth",
+        "https://supabase.com/docs",
+        "https://supabase.com/blog"
+      ],
+      "typicalUseCase": "Full-stack apps, PostgreSQL-based projects, open-source solutions",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Tailwind CSS",
+      "category": "css-framework",
+      "difficulty": "easy",
+      "description": "Utility-first CSS framework for rapid UI development",
+      "alternatives": ["Bootstrap", "Material-UI", "Chakra UI"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "very-low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://tailwindcss.com/docs",
+        "https://www.youtube.com/c/TailwindLabs",
+        "https://tailwindui.com"
+      ],
+      "typicalUseCase": "Modern web apps, custom designs, rapid prototyping",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Docker",
+      "category": "containerization",
+      "difficulty": "medium",
+      "description": "Platform for developing, shipping, and running applications in containers",
+      "alternatives": ["Podman", "Kubernetes", "LXC"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://docs.docker.com/get-started/",
+        "https://www.docker.com/resources/",
+        "https://www.youtube.com/c/DockerIo"
+      ],
+      "typicalUseCase": "Microservices, development environments, CI/CD pipelines",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "GraphQL",
+      "category": "api-technology",
+      "difficulty": "medium",
+      "description": "Query language for APIs with strong typing and efficient data fetching",
+      "alternatives": ["REST", "gRPC", "tRPC"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://graphql.org/learn/",
+        "https://www.howtographql.com",
+        "https://www.apollographql.com/tutorials/"
+      ],
+      "typicalUseCase": "Complex data requirements, mobile apps, microservices",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Prisma",
+      "category": "orm",
+      "difficulty": "easy",
+      "description": "Next-generation ORM for Node.js and TypeScript",
+      "alternatives": ["TypeORM", "Sequelize", "Drizzle"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.prisma.io/docs",
+        "https://www.prisma.io/learn",
+        "https://www.youtube.com/c/PrismaData"
+      ],
+      "typicalUseCase": "Type-safe database access, migrations, modern Node.js apps",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Cloudflare",
+      "category": "cdn-security",
+      "difficulty": "easy",
+      "description": "CDN, DDoS protection, and edge computing platform",
+      "alternatives": ["AWS CloudFront", "Fastly", "Akamai"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://developers.cloudflare.com",
+        "https://www.cloudflare.com/learning/",
+        "https://blog.cloudflare.com"
+      ],
+      "typicalUseCase": "Website security, performance optimization, edge functions",
+      "marketDemand": "very-high"
+    },
+    {
+      "name": "Elasticsearch",
+      "category": "search-engine",
+      "difficulty": "hard",
+      "description": "Distributed search and analytics engine",
+      "alternatives": ["Algolia", "Meilisearch", "Typesense"],
+      "costEstimate": {
+        "development": "high",
+        "hosting": "medium-to-high",
+        "maintenance": "high"
+      },
+      "learningResources": [
+        "https://www.elastic.co/guide/",
+        "https://www.elastic.co/training/",
+        "https://www.youtube.com/c/OfficialElasticCommunity"
+      ],
+      "typicalUseCase": "Full-text search, log analytics, real-time data analysis",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Algolia",
+      "category": "search-engine",
+      "difficulty": "easy",
+      "description": "Hosted search API with instant results and typo tolerance",
+      "alternatives": ["Elasticsearch", "Meilisearch", "Typesense"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-high",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.algolia.com/doc/",
+        "https://www.algolia.com/developers/",
+        "https://www.youtube.com/c/Algolia"
+      ],
+      "typicalUseCase": "E-commerce search, site search, autocomplete",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "Twilio",
+      "category": "communication-api",
+      "difficulty": "easy",
+      "description": "Cloud communications platform for SMS, voice, and video",
+      "alternatives": ["SendGrid", "Vonage", "AWS SNS"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "pay-per-use",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://www.twilio.com/docs",
+        "https://www.twilio.com/quest",
+        "https://www.youtube.com/c/Twilio"
+      ],
+      "typicalUseCase": "SMS notifications, two-factor auth, video calls, voice",
+      "marketDemand": "high"
+    },
+    {
+      "name": "SendGrid",
+      "category": "email-service",
+      "difficulty": "easy",
+      "description": "Email delivery and marketing platform",
+      "alternatives": ["Mailgun", "AWS SES", "Postmark"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "free-to-medium",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://docs.sendgrid.com",
+        "https://sendgrid.com/blog/",
+        "https://www.youtube.com/c/SendGrid"
+      ],
+      "typicalUseCase": "Transactional emails, marketing campaigns, email automation",
+      "marketDemand": "high"
+    },
+    {
+      "name": "Remix",
+      "category": "frontend-framework",
+      "difficulty": "medium",
+      "description": "Full-stack React framework focused on web standards and performance",
+      "alternatives": ["Next.js", "SvelteKit", "Astro"],
+      "costEstimate": {
+        "development": "medium",
+        "hosting": "low-to-medium",
+        "maintenance": "medium"
+      },
+      "learningResources": [
+        "https://remix.run/docs",
+        "https://remix.run/blog",
+        "https://www.youtube.com/c/Remix-Run"
+      ],
+      "typicalUseCase": "Full-stack apps, progressive enhancement, edge deployments",
+      "marketDemand": "medium"
+    },
+    {
+      "name": "SvelteKit",
+      "category": "frontend-framework",
+      "difficulty": "easy",
+      "description": "Full-stack framework for building Svelte applications",
+      "alternatives": ["Next.js", "Remix", "Nuxt.js"],
+      "costEstimate": {
+        "development": "low",
+        "hosting": "low",
+        "maintenance": "low"
+      },
+      "learningResources": [
+        "https://kit.svelte.dev/docs",
+        "https://learn.svelte.dev",
+        "https://www.youtube.com/c/SvelteMastery"
+      ],
+      "typicalUseCase": "Full-stack Svelte apps, SSR, static sites",
+      "marketDemand": "medium"
+    }
+  ]
+}
