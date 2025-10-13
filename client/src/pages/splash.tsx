@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Squares } from "@/components/ui/squares-background";
 
 export default function SplashPage() {
   const [, setLocation] = useLocation();
@@ -11,7 +10,6 @@ export default function SplashPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
-      <Squares />
       
       <div className="relative z-10 text-center space-y-8 px-4 max-w-4xl mx-auto">
         <div className="space-y-4">
