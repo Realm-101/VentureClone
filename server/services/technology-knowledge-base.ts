@@ -1,9 +1,5 @@
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { join } from 'path';
 
 // TypeScript interfaces for technology profiles
 export interface CostEstimate {
@@ -79,7 +75,9 @@ class TechnologyKnowledgeBase {
     }
 
     try {
-      const dataPath = join(__dirname, 'data/technology-knowledge-base.json');
+      // In production, data is copied to dist/data during build
+      // Use process.cwd() to get the project root, then look in dist/data
+      const dataPath = join(process.cwd(), 'dist/data/technology-knowledge-base.json');
       const rawData = readFileSync(dataPath, 'utf-8');
       const data: TechnologyData = JSON.parse(rawData);
 
