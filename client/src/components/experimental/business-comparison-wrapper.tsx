@@ -18,6 +18,9 @@ interface BusinessComparisonWrapperProps {
  * Wrapper for BusinessComparison that only loads when experimental features are enabled
  */
 export function BusinessComparisonWrapper({ analyses }: BusinessComparisonWrapperProps) {
+  // Ensure analyses is always an array
+  const safeAnalyses = Array.isArray(analyses) ? analyses : [];
+  
   const fallback = (
     <Card className="bg-vc-card border-vc-border">
       <CardHeader>
@@ -50,7 +53,7 @@ export function BusinessComparisonWrapper({ analyses }: BusinessComparisonWrappe
 
   return (
     <ExperimentalWrapper fallback={fallback} loadingFallback={loadingFallback}>
-      <BusinessComparison analyses={analyses} />
+      <BusinessComparison analyses={safeAnalyses} />
     </ExperimentalWrapper>
   );
 }

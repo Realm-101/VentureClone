@@ -12,6 +12,9 @@ interface BusinessComparisonProps {
 }
 
 export function BusinessComparison({ analyses }: BusinessComparisonProps) {
+  // Ensure analyses is always an array to prevent filter errors
+  const safeAnalyses = Array.isArray(analyses) ? analyses : [];
+  
   const [selectedAnalyses, setSelectedAnalyses] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'score' | 'date' | 'stage'>('score');
 
@@ -23,9 +26,9 @@ export function BusinessComparison({ analyses }: BusinessComparisonProps) {
     );
   };
 
-  const selectedItems = analyses.filter(a => selectedAnalyses.includes(a.id));
+  const selectedItems = safeAnalyses.filter(a => selectedAnalyses.includes(a.id));
 
-  const sortedAnalyses = [...analyses].sort((a, b) => {
+  const sortedAnalyses = [...safeAnalyses].sort((a, b) => {
     switch (sortBy) {
       case 'score':
         return (b.overallScore || 0) - (a.overallScore || 0);
@@ -56,7 +59,7 @@ export function BusinessComparison({ analyses }: BusinessComparisonProps) {
     return 'text-red-400';
   };
 
-  if (analyses.length < 2) {
+  if (safeAnalyses.length < 2) {
     return (
       <Card className="bg-vc-card border-vc-border" data-testid="card-business-comparison">
         <CardHeader>
