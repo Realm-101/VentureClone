@@ -312,38 +312,328 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database storage stub class maintaining same interface for future database integration
+// Database storage implementation using Drizzle ORM with PostgreSQL
 export class DbStorage implements IStorage {
+  private db: any;
+
+  constructor() {
+    // Lazy load database connection
+    this.initializeDb();
+  }
+
+  private async initializeDb() {
+    try {
+      const { drizzle } = await import('drizzle-orm/neon-http');
+      const { neon } = await import('@neondatabase/serverless');
+      
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL environment variable is not set');
+      }
+
+      const sql = neon(databaseUrl);
+      this.db = drizzle(sql);
+      
+      console.log('[DbStorage] Database connection initialized');
+    } catch (error) {
+      console.error('[DbStorage] Failed to initialize database:', error);
+      throw new Error('Failed to initialize database connection');
+    }
+  }
+
+  private async ensureDb() {
+    if (!this.db) {
+      await this.initializeDb();
+    }
+  }
+
   async listAnalyses(userId: string): Promise<AnalysisRecord[]> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      
+      const results = await this.db
+        .select()
+        .from(businessAnalyses)
+        .where(eq(businessAnalyses.userId, userId))
+        .orderBy(desc(businessAnalyses.createdAt));
+
+      return results.map((row: any) => this.mapDbRowToAnalysisRecord(row));
+    } catch (error) {
+      console.error('[DbStorage] Failed to list analyses:', error);
+      throw new Error('Failed to fetch analyses from database');
+    }
   }
 
   async getAnalysis(userId: string, id: string): Promise<AnalysisRecord | null> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      const results = await this.db
+        .select()
+        .from(businessAnalyses)
+        .where(and(
+          eq(businessAnalyses.userId, userId),
+          eq(businessAnalyses.id, id)
+        ))
+        .limit(1);
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      return this.mapDbRowToAnalysisRecord(results[0]);
+    } catch (error) {
+      console.error('[DbStorage] Failed to get analysis:', error);
+      throw new Error('Failed to fetch analysis from database');
+    }
   }
 
   async createAnalysis(userId: string, record: CreateAnalysisInput): Promise<AnalysisRecord> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { randomUUID } = await import('crypto');
+      
+      // Calculate score and legacy fields if structured data exists
+      let overallScore: number | undefined;
+      let businessModel: string | undefined;
+      let revenueStream: string | undefined;
+      let targetMarket: string | undefined;
+      let aiInsights: any | undefined;
+      let scoreDetails: any | undefined;
+      
+      if (record.structured) {
+        overallScore = this.calculateScore(record.structured);
+        businessModel = record.structured.overview?.valueProposition;
+        revenueStream = record.structured.overview?.monetization;
+        targetMarket = record.structured.overview?.targetAudience;
+        
+        aiInsights = {
+          keyInsights: record.structured.synthesis?.keyInsights || [],
+          opportunities: record.structured.market?.swot?.opportunities || [],
+          risks: record.structured.market?.swot?.threats || [],
+        };
+        
+        scoreDetails = {
+          technical: record.structured.technical?.complexityScore || 5,
+          market: 5,
+          execution: 5,
+        };
+      }
+
+      const id = randomUUID();
+      const now = new Date();
+
+      const insertData = {
+        id,
+        userId,
+        url: record.url,
+        businessModel,
+        revenueStream,
+        targetMarket,
+        overallScore,
+        scoreDetails: scoreDetails ? JSON.stringify(scoreDetails) : null,
+        aiInsights: aiInsights ? JSON.stringify(aiInsights) : null,
+        currentStage: 1,
+        stageData: record.structured ? JSON.stringify({ 1: record.structured }) : null,
+        technologyInsights: record.technologyInsights ? JSON.stringify(record.technologyInsights) : null,
+        clonabilityScore: record.clonabilityScore ? JSON.stringify(record.clonabilityScore) : null,
+        enhancedComplexity: record.enhancedComplexity ? JSON.stringify(record.enhancedComplexity) : null,
+        insightsGeneratedAt: record.insightsGeneratedAt || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const results = await this.db
+        .insert(businessAnalyses)
+        .values(insertData)
+        .returning();
+
+      return this.mapDbRowToAnalysisRecord(results[0]);
+    } catch (error) {
+      console.error('[DbStorage] Failed to create analysis:', error);
+      throw new Error('Failed to create analysis in database');
+    }
   }
 
   async deleteAnalysis(userId: string, id: string): Promise<void> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      await this.db
+        .delete(businessAnalyses)
+        .where(and(
+          eq(businessAnalyses.userId, userId),
+          eq(businessAnalyses.id, id)
+        ));
+    } catch (error) {
+      console.error('[DbStorage] Failed to delete analysis:', error);
+      throw new Error('Failed to delete analysis from database');
+    }
   }
 
   async updateAnalysisImprovements(userId: string, id: string, improvements: BusinessImprovement): Promise<AnalysisRecord | null> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      // First get the existing analysis to merge improvements
+      const existing = await this.getAnalysis(userId, id);
+      if (!existing) {
+        return null;
+      }
+
+      const updatedStageData = {
+        ...(existing.stages || {}),
+        improvements,
+      };
+
+      const results = await this.db
+        .update(businessAnalyses)
+        .set({
+          stageData: JSON.stringify(updatedStageData),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(businessAnalyses.userId, userId),
+          eq(businessAnalyses.id, id)
+        ))
+        .returning();
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      return this.mapDbRowToAnalysisRecord(results[0]);
+    } catch (error) {
+      console.error('[DbStorage] Failed to update improvements:', error);
+      throw new Error('Failed to update improvements in database');
+    }
   }
 
   async getAnalysisImprovements(userId: string, id: string): Promise<BusinessImprovement | null> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    const analysis = await this.getAnalysis(userId, id);
+    return analysis?.improvements || null;
   }
 
   async updateAnalysisStageData(userId: string, id: string, stageNumber: number, stageData: StageData): Promise<AnalysisRecord | null> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    await this.ensureDb();
+    
+    try {
+      const { businessAnalyses } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      // Get existing analysis
+      const existing = await this.getAnalysis(userId, id);
+      if (!existing) {
+        return null;
+      }
+
+      // Merge stage data
+      const updatedStages: StagesRecord = {
+        ...(existing.stages || {}),
+        [stageNumber]: stageData,
+      };
+
+      // Update completed stages list
+      const completedStages = existing.completedStages || [];
+      if (stageData.status === 'completed' && !completedStages.includes(stageNumber)) {
+        completedStages.push(stageNumber);
+      }
+
+      const results = await this.db
+        .update(businessAnalyses)
+        .set({
+          stageData: JSON.stringify(updatedStages),
+          currentStage: Math.max(existing.currentStage || 1, stageNumber),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(businessAnalyses.userId, userId),
+          eq(businessAnalyses.id, id)
+        ))
+        .returning();
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      return this.mapDbRowToAnalysisRecord(results[0]);
+    } catch (error) {
+      console.error('[DbStorage] Failed to update stage data:', error);
+      throw new Error('Failed to update stage data in database');
+    }
   }
 
   async getAnalysisStages(userId: string, id: string): Promise<StagesRecord | null> {
-    throw new Error("DbStorage not implemented yet - use STORAGE=mem for now");
+    const analysis = await this.getAnalysis(userId, id);
+    return analysis?.stages || null;
+  }
+
+  // Helper method to map database row to AnalysisRecord
+  private mapDbRowToAnalysisRecord(row: any): AnalysisRecord {
+    const stageData = row.stageData ? (typeof row.stageData === 'string' ? JSON.parse(row.stageData) : row.stageData) : {};
+    
+    return {
+      id: row.id,
+      userId: row.userId,
+      url: row.url,
+      summary: row.businessModel || '',
+      model: 'multi-provider',
+      createdAt: row.createdAt?.toISOString() || new Date().toISOString(),
+      structured: stageData[1] || undefined,
+      improvements: stageData.improvements || undefined,
+      technologyInsights: row.technologyInsights ? (typeof row.technologyInsights === 'string' ? JSON.parse(row.technologyInsights) : row.technologyInsights) : undefined,
+      clonabilityScore: row.clonabilityScore ? (typeof row.clonabilityScore === 'string' ? JSON.parse(row.clonabilityScore) : row.clonabilityScore) : undefined,
+      enhancedComplexity: row.enhancedComplexity ? (typeof row.enhancedComplexity === 'string' ? JSON.parse(row.enhancedComplexity) : row.enhancedComplexity) : undefined,
+      insightsGeneratedAt: row.insightsGeneratedAt || undefined,
+      stages: stageData,
+      currentStage: row.currentStage || 1,
+      completedStages: this.extractCompletedStages(stageData),
+      overallScore: row.overallScore || undefined,
+      scoreDetails: row.scoreDetails ? (typeof row.scoreDetails === 'string' ? JSON.parse(row.scoreDetails) : row.scoreDetails) : undefined,
+      aiInsights: row.aiInsights ? (typeof row.aiInsights === 'string' ? JSON.parse(row.aiInsights) : row.aiInsights) : undefined,
+      businessModel: row.businessModel || undefined,
+      revenueStream: row.revenueStream || undefined,
+      targetMarket: row.targetMarket || undefined,
+    };
+  }
+
+  // Helper to extract completed stages from stage data
+  private extractCompletedStages(stageData: any): number[] {
+    const completed: number[] = [];
+    for (let i = 1; i <= 6; i++) {
+      if (stageData[i]?.status === 'completed') {
+        completed.push(i);
+      }
+    }
+    return completed;
+  }
+
+  // Helper to calculate score from structured data
+  private calculateScore(structured: StructuredAnalysis | EnhancedStructuredAnalysis): number {
+    let score = 50; // Base score
+    
+    // Add points for completeness
+    if (structured.overview) score += 10;
+    if (structured.market?.competitors?.length > 0) score += 10;
+    if (structured.market?.swot) score += 10;
+    if (structured.technical?.techStack?.length) score += 10;
+    if (structured.synthesis?.keyInsights?.length) score += 10;
+    
+    return Math.min(100, score);
   }
 }
 
