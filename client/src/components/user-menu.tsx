@@ -1,7 +1,6 @@
 import { useUser } from "@stackframe/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut } from "lucide-react";
 import { Link } from "wouter";
 
 export function UserMenu() {

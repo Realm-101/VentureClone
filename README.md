@@ -60,9 +60,9 @@ npm run dev
 For detailed architecture information, see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 ## 🔐 Authentication
 
-VentureClone AI uses **Stack Auth** for enterprise-grade authentication:
+VentureClone AI has **Stack Auth integration ready** (currently disabled due to React 18/19 compatibility):
 
-**Features:**
+**Implemented Features:**
 - ✅ Email/password authentication with verification
 - ✅ Social login (Google, GitHub) - optional
 - ✅ User profiles with avatars
@@ -70,18 +70,19 @@ VentureClone AI uses **Stack Auth** for enterprise-grade authentication:
 - ✅ Password reset functionality
 - ✅ Protected routes
 
-**Quick Setup:**
-1. Create a free account at [Stack Auth](https://app.stack-auth.com/)
-2. Add credentials to `.env`:
-   ```env
-   VITE_STACK_PROJECT_ID=your_project_id
-   VITE_STACK_PUBLISHABLE_CLIENT_KEY=your_key
-   STACK_SECRET_SERVER_KEY=your_secret
-   ```
-3. Configure URLs in Stack dashboard
-4. Start your app!
+**Status:** ⚠️ Temporarily disabled - requires React 19 or Stack Auth v1
 
-📚 **Detailed Guide:** [Authentication Quick Start](docs/AUTHENTICATION_QUICKSTART.md)
+**Quick Enable (5 minutes):**
+```bash
+# Option 1: Use Stack Auth v1 (React 18 compatible)
+npm uninstall @stackframe/react
+npm install @stackframe/stack@1.x
+
+# Option 2: Upgrade to React 19
+npm install react@19 react-dom@19
+```
+
+📚 **See:** [AUTHENTICATION_STATUS.md](AUTHENTICATION_STATUS.md) for details and setup instructions
 
 ## 🔌 AI Provider Integration
 
