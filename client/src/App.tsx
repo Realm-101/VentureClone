@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Squares } from "@/components/ui/squares-background";
+import { StackProvider, StackTheme } from "@stackframe/react";
+import { stackClientApp } from "@/../../stack/client";
 
 // Lazy load experimental components to exclude them from bundle when disabled
 const Dashboard = isExperimentalEnabled() 
@@ -34,6 +36,7 @@ const AuthHandler = React.lazy(() => import("@/pages/handler"));
 // Splash and protected pages
 const SplashPage = React.lazy(() => import("@/pages/splash"));
 const HomePage = React.lazy(() => import("@/pages/home"));
+const ProfilePage = React.lazy(() => import("@/pages/profile"));
 
 /**
  * Error Boundary Component
@@ -126,6 +129,7 @@ function Router() {
         <Switch>
           <Route path="/handler/:rest*" component={AuthHandler} />
           <Route path="/home" component={HomePage} />
+          <Route path="/profile" component={ProfilePage} />
           <Route path="/spiral" component={SpiralDemoPage} />
           <Route path="/loader-demo" component={LoaderDemo} />
           <Route path="/" component={SplashPage} />
@@ -141,6 +145,7 @@ function Router() {
       <Switch>
         <Route path="/handler/:rest*" component={AuthHandler} />
         <Route path="/home" component={HomePage} />
+        <Route path="/profile" component={ProfilePage} />
         <Route path="/dashboard" component={Dashboard!} />
         <Route path="/analytics" component={Analytics!} />
         <Route path="/spiral" component={SpiralDemoPage} />
@@ -159,31 +164,35 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <div className={isExperimentalEnabled() ? "dark min-h-screen relative" : "min-h-screen relative"} style={{ background: '#060606' }}>
-          {/* Animated checkered background */}
-          <div className="fixed inset-0 z-0 pointer-events-none">
-            <Squares 
-              direction="diagonal"
-              speed={0.5}
-              squareSize={40}
-              borderColor="#333"
-              hoverFillColor="#222"
-            />
-          </div>
-          
-          {/* Content layer */}
-          <div className="relative z-10 min-h-screen">
-            <Toaster />
-            <Router />
-            {isExperimentalEnabled() && AIAssistant && (
-              <Suspense fallback={null}>
-                <AIAssistant />
-              </Suspense>
-            )}
-          </div>
-        </div>
-      </QueryClientProvider>
+      <StackProvider app={stackClientApp}>
+        <StackTheme>
+          <QueryClientProvider client={queryClient}>
+            <div className={isExperimentalEnabled() ? "dark min-h-screen relative" : "min-h-screen relative"} style={{ background: '#060606' }}>
+              {/* Animated checkered background */}
+              <div className="fixed inset-0 z-0 pointer-events-none">
+                <Squares 
+                  direction="diagonal"
+                  speed={0.5}
+                  squareSize={40}
+                  borderColor="#333"
+                  hoverFillColor="#222"
+                />
+              </div>
+              
+              {/* Content layer */}
+              <div className="relative z-10 min-h-screen">
+                <Toaster />
+                <Router />
+                {isExperimentalEnabled() && AIAssistant && (
+                  <Suspense fallback={null}>
+                    <AIAssistant />
+                  </Suspense>
+                )}
+              </div>
+            </div>
+          </QueryClientProvider>
+        </StackTheme>
+      </StackProvider>
     </ErrorBoundary>
   );
 }

@@ -9,19 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg relative isolate overflow-hidden",
-      // Metallic gradient background
-      "bg-gradient-to-br from-zinc-800/90 via-zinc-900/95 to-zinc-950/90",
-      // Textured overlay
-      "before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.03] before:to-white/[0.01] before:opacity-100 before:pointer-events-none",
-      // Subtle border with gradient
-      "border border-white/10",
-      // Enhanced shadow for depth
-      "shadow-[0_8px_16px_rgb(0_0_0_/_0.4)]",
-      // Glass effect
-      "backdrop-blur-xl backdrop-saturate-[180%]",
-      // Text color
-      "text-card-foreground",
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
       className
     )}
     {...props}
@@ -42,10 +30,10 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <h3
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",
@@ -57,10 +45,10 @@ const CardTitle = React.forwardRef<
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}

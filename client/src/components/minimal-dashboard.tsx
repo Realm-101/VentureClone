@@ -9,6 +9,7 @@ import { StructuredReport } from '@/components/StructuredReport';
 import { EnhancedAnalysisDisplay } from '@/components/enhanced-analysis-display';
 import ElectricBorder from '@/components/ElectricBorder';
 import { QuantumPulseLoader } from '@/components/quantum-pulse-loade';
+import { UserMenu } from '@/components/user-menu';
 import type { AnalysisRecord } from '@/types/minimal-api';
 import type { EnhancedAnalysisRecord } from '@shared/schema';
 
@@ -280,16 +281,19 @@ export function MinimalDashboard() {
       {/* Simple Header */}
       <header className="border-b backdrop-blur-sm bg-background/80">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/images/Headerlogo.png" 
-              alt="VentureClone AI Logo" 
-              className="h-8 w-auto object-contain"
-            />
-            <div>
-              <h1 className="text-xl font-bold">VentureClone AI</h1>
-              <p className="text-sm text-muted-foreground">Business Analysis Tool</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/images/Headerlogo.png" 
+                alt="VentureClone AI Logo" 
+                className="h-8 w-auto object-contain"
+              />
+              <div>
+                <h1 className="text-xl font-bold">VentureClone AI</h1>
+                <p className="text-sm text-muted-foreground">Business Analysis Tool</p>
+              </div>
             </div>
+            <UserMenu />
           </div>
         </div>
       </header>

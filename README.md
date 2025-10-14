@@ -58,6 +58,31 @@ npm run dev
 - Performance monitoring & caching
 
 For detailed architecture information, see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
+## 🔐 Authentication
+
+VentureClone AI uses **Stack Auth** for enterprise-grade authentication:
+
+**Features:**
+- ✅ Email/password authentication with verification
+- ✅ Social login (Google, GitHub) - optional
+- ✅ User profiles with avatars
+- ✅ Session management with secure cookies
+- ✅ Password reset functionality
+- ✅ Protected routes
+
+**Quick Setup:**
+1. Create a free account at [Stack Auth](https://app.stack-auth.com/)
+2. Add credentials to `.env`:
+   ```env
+   VITE_STACK_PROJECT_ID=your_project_id
+   VITE_STACK_PUBLISHABLE_CLIENT_KEY=your_key
+   STACK_SECRET_SERVER_KEY=your_secret
+   ```
+3. Configure URLs in Stack dashboard
+4. Start your app!
+
+📚 **Detailed Guide:** [Authentication Quick Start](docs/AUTHENTICATION_QUICKSTART.md)
+
 ## 🔌 AI Provider Integration
 
 VentureClone AI supports multiple AI providers with automatic fallback:
