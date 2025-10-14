@@ -27,6 +27,30 @@ export default defineConfig({
   build: {
     outDir: path.resolve(process.cwd(), "dist", "public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Put all Stack Auth modules in one chunk to avoid circular dependencies
+          if (id.includes('@stackframe/react')) {
+            return 'stack-auth';
+          }
+          // Put all node_modules in vendor chunk except Stack Auth
+          if (id.includes('node_modules') && !id.includes('@stackframe/react')) {
+            return 'vendor';
+          }
+        },
+      },
+      // Suppress circular dependency warnings for Stack Auth
+      onwarn(warning, warn) {
+        if (
+          warning.code === 'CIRCULAR_DEPENDENCY' &&
+          warning.message.includes('@stackframe/react')
+        ) {
+          return;
+        }
+        warn(warning);
+      },
+    },
   },
   server: {
     fs: {
