@@ -1,14 +1,15 @@
-import { useUser } from "@stackframe/react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { LogOut, User } from "lucide-react";
 
 export function UserMenu() {
-  const user = useUser();
+  const { user, isAuthenticated, logout } = useAuth();
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
-      <Link href="/handler/sign-in">
+      <Link href="/auth">
         <Button variant="outline" size="sm">
           Sign In
         </Button>
@@ -16,14 +17,8 @@ export function UserMenu() {
     );
   }
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const getInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -31,14 +26,21 @@ export function UserMenu() {
       <Link href="/profile">
         <Button variant="ghost" size="sm" className="gap-2">
           <Avatar className="h-6 w-6">
-            <AvatarImage src={user.profileImageUrl || undefined} />
             <AvatarFallback className="text-xs">
-              {getInitials(user.displayName)}
+              {getInitials(user!.email)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline">{user.displayName || "Profile"}</span>
+          <span className="hidden sm:inline">{user!.email}</span>
         </Button>
       </Link>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => logout()}
+        title="Sign out"
+      >
+        <LogOut className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

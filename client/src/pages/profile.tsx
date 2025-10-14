@@ -1,4 +1,5 @@
-import { useUser } from "@stackframe/react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,16 +7,21 @@ import { Mail, User, LogOut, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
 export default function ProfilePage() {
-  const user = useUser({ or: "redirect" });
+  const { user, isAuthenticated, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    setLocation("/auth");
+    return null;
+  }
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  const getInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -41,17 +47,16 @@ export default function ProfilePage() {
             {/* Avatar Section */}
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={user.profileImageUrl || undefined} />
                 <AvatarFallback className="text-lg">
-                  {getInitials(user.displayName)}
+                  {getInitials(user.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                 <h3 className="text-xl font-semibold">
-                  {user.displayName || "User"}
+                  {user.username}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {user.primaryEmail || "No email set"}
+                  {user.email}
                 </p>
               </div>
             </div>
@@ -59,21 +64,21 @@ export default function ProfilePage() {
             {/* User Info */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
-                <User className="h-5 w-5 text-muted-foreground" />
+                <Mail className="h-5 w-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Display Name</p>
+                  <p className="text-sm font-medium">Email</p>
                   <p className="text-sm text-muted-foreground">
-                    {user.displayName || "Not set"}
+                    {user.email}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
-                <Mail className="h-5 w-5 text-muted-foreground" />
+                <User className="h-5 w-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Email Verified</p>
+                  <p className="text-sm font-medium">Username</p>
                   <p className="text-sm text-muted-foreground">
-                    {user.primaryEmailVerified ? "✓ Verified" : "✗ Not verified"}
+                    {user.username}
                   </p>
                 </div>
               </div>
@@ -83,7 +88,7 @@ export default function ProfilePage() {
             <div className="pt-4 border-t">
               <Button
                 variant="destructive"
-                onClick={() => user.signOut()}
+                onClick={() => logout()}
                 className="w-full"
               >
                 <LogOut className="h-4 w-4 mr-2" />
@@ -104,8 +109,8 @@ export default function ProfilePage() {
               <span className="font-mono text-xs">{user.id}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Primary Email:</span>
-              <span>{user.primaryEmail || "Not set"}</span>
+              <span className="text-muted-foreground">Email:</span>
+              <span>{user.email}</span>
             </div>
           </CardContent>
         </Card>

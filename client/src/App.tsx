@@ -10,8 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Squares } from "@/components/ui/squares-background";
-import { StackProvider, StackTheme } from "@stackframe/react";
-import { stackClientApp } from "@/../../stack/client";
+// TODO: Stack Auth v2 has circular dependency issues in production builds
+// Temporarily disabled for production deployment
+// import { StackProvider, StackTheme } from "@stackframe/react";
+// import { stackClientApp } from "@/../../stack/client";
 
 // Lazy load experimental components to exclude them from bundle when disabled
 const Dashboard = isExperimentalEnabled() 
@@ -30,8 +32,8 @@ const AIAssistant = isExperimentalEnabled()
 const SpiralDemoPage = React.lazy(() => import("@/pages/spiral-demo-page"));
 const LoaderDemo = React.lazy(() => import("@/components/LoaderDemo").then(module => ({ default: module.LoaderDemo })));
 
-// Auth handler for Stack Auth
-const AuthHandler = React.lazy(() => import("@/pages/handler"));
+// Authentication page
+const AuthPage = React.lazy(() => import("@/pages/auth"));
 
 // Splash and protected pages
 const SplashPage = React.lazy(() => import("@/pages/splash"));
@@ -127,7 +129,7 @@ function Router() {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
-          <Route path="/handler/:rest*" component={AuthHandler} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/home" component={HomePage} />
           <Route path="/profile" component={ProfilePage} />
           <Route path="/spiral" component={SpiralDemoPage} />
@@ -143,7 +145,7 @@ function Router() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
-        <Route path="/handler/:rest*" component={AuthHandler} />
+        <Route path="/auth" component={AuthPage} />
         <Route path="/home" component={HomePage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/dashboard" component={Dashboard!} />
@@ -164,35 +166,31 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <StackProvider app={stackClientApp}>
-        <StackTheme>
-          <QueryClientProvider client={queryClient}>
-            <div className={isExperimentalEnabled() ? "dark min-h-screen relative" : "min-h-screen relative"} style={{ background: '#060606' }}>
-              {/* Animated checkered background */}
-              <div className="fixed inset-0 z-0 pointer-events-none">
-                <Squares 
-                  direction="diagonal"
-                  speed={0.5}
-                  squareSize={40}
-                  borderColor="#333"
-                  hoverFillColor="#222"
-                />
-              </div>
-              
-              {/* Content layer */}
-              <div className="relative z-10 min-h-screen">
-                <Toaster />
-                <Router />
-                {isExperimentalEnabled() && AIAssistant && (
-                  <Suspense fallback={null}>
-                    <AIAssistant />
-                  </Suspense>
-                )}
-              </div>
-            </div>
-          </QueryClientProvider>
-        </StackTheme>
-      </StackProvider>
+      <QueryClientProvider client={queryClient}>
+        <div className={isExperimentalEnabled() ? "dark min-h-screen relative" : "min-h-screen relative"} style={{ background: '#060606' }}>
+          {/* Animated checkered background */}
+          <div className="fixed inset-0 z-0 pointer-events-none">
+            <Squares 
+              direction="diagonal"
+              speed={0.5}
+              squareSize={40}
+              borderColor="#333"
+              hoverFillColor="#222"
+            />
+          </div>
+          
+          {/* Content layer */}
+          <div className="relative z-10 min-h-screen">
+            <Toaster />
+            <Router />
+            {isExperimentalEnabled() && AIAssistant && (
+              <Suspense fallback={null}>
+                <AIAssistant />
+              </Suspense>
+            )}
+          </div>
+        </div>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

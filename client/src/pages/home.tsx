@@ -1,7 +1,8 @@
 import { MinimalDashboard } from "@/components/minimal-dashboard";
 import { isExperimentalEnabled } from "@/lib/feature-flags";
 import { lazy, Suspense } from "react";
-import { useUser } from "@stackframe/react";
+// TODO: Re-enable when Stack Auth v2 fixes circular dependency issues
+// import { useUser } from "@stackframe/react";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 
@@ -17,7 +18,8 @@ function LoadingFallback() {
 }
 
 export default function HomePage() {
-  const user = useUser({ or: "redirect" });
+  // TODO: Re-enable when Stack Auth v2 fixes circular dependency issues
+  // const user = useUser({ or: "redirect" });
   
   // If experimental features are enabled, show full dashboard
   // Otherwise show minimal dashboard

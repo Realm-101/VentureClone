@@ -3,6 +3,9 @@ dotenv.config();
 
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "@neondatabase/serverless";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { userMiddleware } from "./middleware/user";
@@ -18,10 +21,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// 2. Request ID middleware - early for traceability (requirement 5.4)
+// 2. Session middleware for authentication
+const PgSession = connectPgSimple(session);
+const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.use(
+  session({
+    store: new PgSession({
+      pool: sessionPool,
+      tableName: 'sessions',
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    },
+  })
+);
+
+// 3. Request ID middleware - early for traceability (requirement 5.4)
 app.use(requestIdMiddleware);
 
-// 3. User authentication middleware - after request ID for proper logging (requirement 5.4)
+// 4. User authentication middleware - after request ID for proper logging (requirement 5.4)
 app.use(userMiddleware);
 
 app.use((req, res, next) => {

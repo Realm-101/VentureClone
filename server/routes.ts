@@ -448,11 +448,114 @@ async function analyzeUrlWithAI(url: string, firstPartyData?: FirstPartyData): P
   });
 }
 
+import { AuthService } from "./services/auth";
+
+// Extend Express Session type
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("=== REGISTERING MINIMAL ROUTES ===");
   
   // GET /api/healthz - Health check endpoint
   app.get("/api/healthz", healthzHandler);
+  
+  // POST /api/auth/register - Register new user
+  app.post("/api/auth/register", async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+      
+      const user = await AuthService.register(email, password);
+      
+      // Set session
+      req.session.userId = user.id;
+      
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      const message = error instanceof Error ? error.message : 'Registration failed';
+      res.status(400).json({ error: message });
+    }
+  });
+  
+  // POST /api/auth/login - Login user
+  app.post("/api/auth/login", async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+      
+      const user = await AuthService.login(email, password);
+      
+      // Set session
+      req.session.userId = user.id;
+      
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      const message = error instanceof Error ? error.message : 'Login failed';
+      res.status(401).json({ error: message });
+    }
+  });
+  
+  // POST /api/auth/logout - Logout user
+  app.post("/api/auth/logout", async (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ success: true });
+    });
+  });
+  
+  // GET /api/auth/me - Get current user
+  app.get("/api/auth/me", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    try {
+      const user = await AuthService.getUserById(req.session.userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      });
+    } catch (error) {
+      console.error('Get user error:', error);
+      res.status(500).json({ error: 'Failed to get user' });
+    }
+  });
   
   // GET /api/tech-detection/stats - Get tech detection performance statistics
   app.get("/api/tech-detection/stats", async (req, res) => {
