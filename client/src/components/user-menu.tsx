@@ -2,12 +2,22 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export function UserMenu() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
-  if (!isAuthenticated) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        Loading...
+      </Button>
+    );
+  }
+
+  // Show sign in button if not authenticated
+  if (!isAuthenticated || !user) {
     return (
       <Link href="/auth">
         <Button variant="outline" size="sm">
@@ -26,11 +36,11 @@ export function UserMenu() {
       <Link href="/profile">
         <Button variant="ghost" size="sm" className="gap-2">
           <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-xs">
-              {getInitials(user!.email)}
+            <AvatarFallback className="text-xs bg-orange-500 text-white">
+              {getInitials(user.email)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline">{user!.email}</span>
+          <span className="hidden sm:inline text-sm">{user.email}</span>
         </Button>
       </Link>
       <Button
