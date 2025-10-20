@@ -24,7 +24,9 @@ npm run dev
 - **Technology Insights**: Actionable recommendations, alternatives, and build-vs-buy analysis
 - **Performance Optimized**: Sub-8-second response times with concurrent request handling
 
-## 📋 Recent Updates (v3.1 - January 2025)
+## 📋 Recent Updates (v0.31 - September 2025)
+
+## Try the Live Beta @ Https://VClone.online
 
 - ✅ Technology Insights Engine with 50+ technology profiles
 - ✅ Enhanced complexity analysis (frontend/backend/infrastructure breakdown)
