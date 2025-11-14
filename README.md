@@ -54,7 +54,7 @@ npm run dev
 
 **Key Services:**
 - Technology detection (Wappalyzer)
-- Complexity analysis & scoring
+- Complexity analysis engine
 - Business improvement generation
 - Export service (PDF, HTML, JSON)
 - Performance monitoring & caching
